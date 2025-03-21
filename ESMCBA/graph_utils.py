@@ -1,7 +1,7 @@
 # graph_utils.py
 
 # We import everything from imports.py to ensure consistency:
-from imports import *
+from ESMCBA.imports import *
 
 def plot_predictions(predictions_df, predicted_model, title_prefix=''):
     """
