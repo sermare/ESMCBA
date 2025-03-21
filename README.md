@@ -107,3 +107,8 @@ cd ESM-Cambrian-Analysis
 conda create -n esmcambrian python=3.9 -y
 conda activate esmcambrian
 pip install -r requirements.txt
+
+*(Optional) MHCFlurry Installation*
+If you want to run MHCFlurry predictions side-by-side with ESM results:
+```bash pip install mhcflurry
+mhcflurry-downloads fetch
