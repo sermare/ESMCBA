@@ -101,7 +101,7 @@ def mhcflurry_predict(evaluations_dt_sorted):
     for allele in unique:
 
         allele, peptides = allele, hla_sequences[hla_sequences['HLA'] == allele].values.T[1]
-
+        
         allele_clean = allele.replace('*', '').replace(':', '').replace(' ', '')
         run_id = f"EVAL_MHCFLURRY_FUSIONS_{allele_clean}"
         
@@ -119,8 +119,16 @@ def mhcflurry_predict(evaluations_dt_sorted):
 
         # Convert the peptides array into a plain string without extra quotes.
         # You can choose a delimiter; here we use a space.
+  
+  
         peptides_str = " ".join(peptides.tolist())
+        output_dir = '/global/scratch/users/sergiomar10/ESMCBA/ESMCBA/performances/benchmark/'
+        fasta_filename = os.path.join(output_dir, f"{allele_clean}.pep")
+        with open(fasta_filename, "w") as fout:
+            for idx, peptide in enumerate(peptides, 1):
+                fout.write(f">pep{idx}\n{peptide}\n")
         
+        print(f"Saved {len(peptides)} peptides for allele {allele} in {fasta_filename}")
         # Create the command. Now the --peptides argument is a plain string.
         sql_query = f"""mhcflurry-predict --alleles {allele_clean} --peptides {peptides_str} --out /global/scratch/users/sergiomar10/ESMCBA/ESMCBA/performances/benchmark/MHCFlurry/MHCFlurry{allele_clean}_mhc_flurry.csv
     """
