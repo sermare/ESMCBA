@@ -122,7 +122,7 @@ def mhcflurry_predict(evaluations_dt_sorted):
         peptides_str = " ".join(peptides.tolist())
         
         # Create the command. Now the --peptides argument is a plain string.
-        sql_query = f"""mhcflurry-predict --alleles {allele_clean} --peptides {peptides_str} --out /global/scratch/users/sergiomar10/ESMCBA/ESMCBA/performances/benchmark/MHCFlurry{allele_clean}_mhc_flurry.csv
+        sql_query = f"""mhcflurry-predict --alleles {allele_clean} --peptides {peptides_str} --out /global/scratch/users/sergiomar10/ESMCBA/ESMCBA/performances/benchmark/MHCFlurry/MHCFlurry{allele_clean}_mhc_flurry.csv
     """
         try:
             # Create the full path for the SLURM job script.
