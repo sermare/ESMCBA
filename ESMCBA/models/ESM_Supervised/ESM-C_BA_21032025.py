@@ -25,7 +25,7 @@ parser.add_argument('--base_block_lr', type=float, default=1e-5, help='Learning 
 parser.add_argument('--regression_block_lr', type=float, default=1e-5, help='Learning rate for regression head')
 
 args = parser.parse_args()
-name_of_model = f"{args.name_of_model}_MSE_{args.HLA}"
+name_of_model = f"{args.name_of_model}_Hubber_{args.HLA}"
 encoding = args.encoding
 file_path = args.file_path
 size_of_train = args.train_size
@@ -237,7 +237,7 @@ train_loader, val_loader, eval_loader, train_data, val_data, eval_data = prepare
     aggregated, batch_size=10, size_of_train=size_of_train)
 
 # Loss function for regression
-criterion = nn.MSELoss()
+criterion = nn.HuberLoss() #  nn.MSELoss() 
 
 # Training loop
 NUM_EPOCHS = 10
