@@ -80,23 +80,36 @@ def mhcflurry_predict(evaluations_dt_sorted):
     hla_sequences = []
 
     for HLA, path in evaluations_dt_sorted[['HLA', 'path']].values:
+
         dt = pd.read_csv(path)
+
         sequences = dt['sequence'].values
         HLA = HLA.replace('HLA','HLA-')
+
+        hla_seq = []
+
         for seq in sequences:
 
-            if len(seq) < 8:
-                continue
-            if len(seq) > 15:
-                continue
+            # if len(seq) < 8:
+            #     print(seq)
+            #     continue
+            # if len(seq) > 15:
+            #     print(seq)
+            #     continue
             
             hla_sequences.append([HLA, seq])
-    hla_sequences = pd.DataFrame(hla_sequences, columns = ['HLA', 'sequence'])#.to_csv('hla_sequences.csv', index = False)
+            # hla_seq.append(seq)
 
-    # Directory to save the shell script files
+        # print(HLA, len(hla_seq))
+
+    hla_sequences = pd.DataFrame(hla_sequences, columns = ['HLA', 'sequence']) #.to_csv('hla_sequences.csv', index = False)
+
     sh_file_dir = '/global/scratch/users/sergiomar10/slurm_jobs/MHCF_ESMCBA'
     os.makedirs(sh_file_dir, exist_ok=True)
+
     unique = hla_sequences['HLA'].unique()
+
+    # print(unique, len(unique))
 
     for allele in unique:
 
@@ -107,30 +120,25 @@ def mhcflurry_predict(evaluations_dt_sorted):
         
         aa = set("ACDEFGHIKLMNPQRSTVWY")
 
-    # Assume peptides is a list of peptide strings.
-        # First, remove occurrences of '<unk>' then filter out any non-amino acid letters.
         cleaned_peptides = [
             ''.join(ch for ch in peptide.replace('<unk>', '') if ch.upper() in aa)
             for peptide in peptides
         ]
 
-    # Convert the cleaned peptides list into a NumPy array if needed.
+        # print(allele, len(cleaned_peptides), 'peptides to evaluate.')
+
         peptides = np.array(cleaned_peptides)
 
-        # Convert the peptides array into a plain string without extra quotes.
-        # You can choose a delimiter; here we use a space.
-  
-  
         peptides_str = " ".join(peptides.tolist())
-        output_dir = '/global/scratch/users/sergiomar10/ESMCBA/ESMCBA/performances/benchmark/'
+        output_dir = '/global/scratch/users/sergiomar10/benchmark/MSE_loss/NETMHCSPAN4/'
         fasta_filename = os.path.join(output_dir, f"{allele_clean}.pep")
         with open(fasta_filename, "w") as fout:
             for idx, peptide in enumerate(peptides, 1):
                 fout.write(f">pep{idx}\n{peptide}\n")
         
         print(f"Saved {len(peptides)} peptides for allele {allele} in {fasta_filename}")
-        # Create the command. Now the --peptides argument is a plain string.
-        sql_query = f"""mhcflurry-predict --alleles {allele_clean} --peptides {peptides_str} --out /global/scratch/users/sergiomar10/ESMCBA/ESMCBA/performances/benchmark/MHCFlurry/MHCFlurry{allele_clean}_mhc_flurry.csv
+
+        sql_query = f"""mhcflurry-predict --alleles {allele_clean} --peptides {peptides_str} --out /global/scratch/users/sergiomar10/benchmark/MSE_loss/MHCFlurry/{allele_clean}_mhc_flurry.csv
     """
         try:
             # Create the full path for the SLURM job script.
