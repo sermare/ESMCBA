@@ -156,42 +156,37 @@ for label, sequence, year_submission in epitope_data:
 print(f"Filtered {len(filtered_data)} sequences.", flush=True)
 aggregated = pd.DataFrame(filtered_data, columns=['label', 'sequence', 'testing'])
 
+from scipy.stats import gaussian_kde
+
 def split_data(aggregated, size_of_train=1.0):
-    """Split data into train/validation (≤ 2021) and evaluation (> 2021) sets with bin-sampling."""
-    # Training and validation data (≤ 2021)
-    pre_2021_data = aggregated[aggregated['testing'] <= 2021]
+    pre_2019_data = aggregated[aggregated['testing'] <= 2019]
+    total_samples = int(size_of_train * len(pre_2019_data))
     
-    # Bin-sample training data
-    print(f'Threshold used for training data: {size_of_train}', flush=True)
+    # Define bins
     bin_edges = [0, 1, 2, 3, 4, 5, 6, 7]
     bin_centers = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5]
-    pmf = norm.pdf(bin_centers, loc=3, scale=1.0)
-    pmf /= pmf.sum()
-    total_samples = int(size_of_train * len(pre_2021_data))
+    
+    # Fit KDE to log(IC50) data
+    kde = gaussian_kde(pre_2019_data["label"])
+    pmf = kde(bin_centers)  # Probability density at bin centers
+    pmf /= pmf.sum()  # Normalize to sum to 1
     bin_samples = np.round(pmf * total_samples).astype(int)
-
+    
     sampled_sequences, sampled_labels = [], []
     for i in range(len(bin_centers)):
         bin_min, bin_max = bin_edges[i], bin_edges[i + 1]
-        df_bin = pre_2021_data[(pre_2021_data["label"] > bin_min) & (pre_2021_data["label"] <= bin_max)]
+        df_bin = pre_2019_data[(pre_2019_data["label"] > bin_min) & (pre_2019_data["label"] <= bin_max)]
         n_samples = min(bin_samples[i], len(df_bin))
         if n_samples > 0:
             sample = df_bin.sample(n=n_samples)
             sampled_sequences.extend(sample["sequence"].tolist())
             sampled_labels.extend(sample["label"].tolist())
-
+    
     final_train = pd.DataFrame({"sequence": sampled_sequences, "label": sampled_labels})
     train_data, val_data = train_test_split(final_train, test_size=0.1, shuffle=True)
-
-    # Evaluation data (> 2021)
-    eval_data = aggregated[aggregated['testing'] > 2021]
-    if len(eval_data) < 10:
-        print("Warning: Less than 10 samples for evaluation (> 2021). Adding remaining pre-2021 data.", flush=True)
-        remaining_data = pre_2021_data[~pre_2021_data["sequence"].isin(sampled_sequences)]
-        eval_data = pd.concat([remaining_data, eval_data])
-
+    eval_data = aggregated[aggregated['testing'] > 2019]
     return train_data[['sequence', 'label']], val_data[['sequence', 'label']], eval_data[['sequence', 'label']]
-
+    
 # Dataset class
 class EpitopeDataset(Dataset):
     def __init__(self, sequences, labels, base_model):
@@ -217,7 +212,7 @@ def collate_fn(batch):
     labels = torch.stack(labels)
     return list(sequences), protein_tensors, labels
 
-def prepare_dataloaders(dataframe, batch_size=10, size_of_train=1):
+def prepare_dataloaders(dataframe, batch_size=25, size_of_train=1):
     """Prepare DataLoader objects for training, validation, and evaluation."""
     train_data, val_data, eval_data = split_data(dataframe, size_of_train)
     print(f"Training samples: {len(train_data)}, Validation samples: {len(val_data)}, "
@@ -234,10 +229,10 @@ def prepare_dataloaders(dataframe, batch_size=10, size_of_train=1):
 
 # Prepare data
 train_loader, val_loader, eval_loader, train_data, val_data, eval_data = prepare_dataloaders(
-    aggregated, batch_size=10, size_of_train=size_of_train)
+    aggregated, batch_size=25, size_of_train=size_of_train)
 
 # Loss function for regression
-criterion = nn.HuberLoss() #  nn.MSELoss() 
+criterion = nn.HuberLoss(delta=1.0)  # delta controls the transition point# nn.MSELoss()  #nn.HuberLoss() #  
 
 # Training loop
 NUM_EPOCHS = 10
@@ -270,7 +265,7 @@ for epoch in range(NUM_EPOCHS):
     train_spearman, _ = spearmanr(train_targets, train_predictions)
     print(f"Epoch [{epoch+1}/{NUM_EPOCHS}] Train Loss: {avg_train_loss:.4f}, Train Spearman: {train_spearman:.4f}", flush=True)
     
-    # Validation (≤ 2021)
+    # Validation (≤ 2019)
     model.eval()
     val_loss = 0.0
     val_samples = 0
@@ -297,7 +292,7 @@ for epoch in range(NUM_EPOCHS):
         best_val_loss = avg_val_loss
         best_model_state = model.state_dict()
 
-# Evaluate on held-out set (> 2021) using the best model
+# Evaluate on held-out set (> 2019) using the best model
 model.load_state_dict(best_model_state)
 model.eval()
 eval_sequences, eval_predictions, eval_targets = [], [], []
@@ -315,7 +310,7 @@ with torch.no_grad():
 
 eval_spearman, _ = spearmanr(eval_targets, eval_predictions)
 eval_pearson, _ = pearsonr(eval_targets, eval_predictions)
-print(f"Final Evaluation (> 2021) Spearman: {eval_spearman:.4f}, Pearson: {eval_pearson:.4f}", flush=True)
+print(f"Final Evaluation (> 2019) Spearman: {eval_spearman:.4f}, Pearson: {eval_pearson:.4f}", flush=True)
 
 # Save results
 eval_df = pd.DataFrame({'sequence': eval_sequences, 'prediction': eval_predictions, 'measured': eval_targets})
@@ -327,10 +322,10 @@ print(f"Saved evaluation to {os.path.join(loss_dir, f'evaluation_{name_of_model}
 if eval_spearman > 0.30:
     training_dir = os.path.join(loss_dir, 'training_data')
     os.makedirs(training_dir, exist_ok=True)
-    eval_df.to_csv(os.path.join(training_dir, f'training_eval_{name_of_model}.csv'), index=False)
+    train_data.to_csv(os.path.join(training_dir, f'{name_of_model}.csv'), index=False)
     
     HLA_folder = HLA.replace("*", "").replace(":", "")
     model_dir = f'/global/scratch/users/sergiomar10/models/ESMCBA_21032025/{HLA_folder}/'
     os.makedirs(model_dir, exist_ok=True)
-    torch.save(best_model_state, os.path.join(model_dir, f"training_{name_of_model}_final.pth"))
-    print(f"Saved best model to {os.path.join(model_dir, f'training_{name_of_model}_final.pth')}")
+    torch.save(best_model_state, os.path.join(model_dir, f'{name_of_model}_final.pth'))
+    print(f"Saved best model to {os.path.join(model_dir, f'{name_of_model}_final.pth')}")

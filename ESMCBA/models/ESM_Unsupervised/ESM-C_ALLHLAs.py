@@ -154,36 +154,43 @@ def parse_fasta(file_path):
 # Load + Filter Data
 #########################################################
 train_fasta_path = "/global/scratch/users/sergiomar10/jupyter_notebooks/hla_protein_sequences.fasta"
-all_data = parse_fasta(train_fasta_path)
+# all_data = parse_fasta(train_fasta_path)
 
 hla_and_epitopes = []
-for head, hla_seq in all_data:
-    # Parse out the HLA naming from header
-    head = head.split('|')[1][:7].replace('*', '').replace(':', '')
-    head = 'HLA' + head
-    if head != HLA:
-        continue
 
-    # Load the CSV for that HLA
-    iedb_path = f"/global/scratch/users/sergiomar10/data/IEDB_SQL/IEDB_{head}_final.csv"
-    df = pd.read_csv(iedb_path, header=None)
-    df.columns = [
-        'sequence', 'ref_ID', 'submissionID', 'Epitope_ID', 'protein_origin',
-        'ID_SOURCE', "SOURCE_ORGANISM", "IC50_nM", "DESCRIPTION_BINDING", "Year_submission"
-    ]
-    # Filter to "Positive" sequences
-    df = df[df['DESCRIPTION_BINDING'].str.contains("Positive")][["ref_ID","sequence"]].values
+allele =  HLA.replace('HLA', '')
 
-    for ref_id, epitope in df:
-        if any(x in epitope for x in ['+', '(', 'X']):
-            continue
-        # If your encoding mode = 'HLA', prepend the HLA sequence to epitope
-        if encoding == 'HLA':
-            epitope = hla_seq + epitope
+iedb_complete = pd.read_csv(f'/clusterfs/nilah/sergio/iedb_sql_epitopes/HLA-{allele}_sql.csv', header = None)
+iedb_complete.columns = ['HLA','peptide','BA','Qual','Literature','Submission']
+iedb_complete = iedb_complete[(iedb_complete['Qual'].str.contains('Positive') )]
 
-        hla_and_epitopes.append(epitope)
+# for head, hla_seq in all_data:
+#     # Parse out the HLA naming from header
+#     head = head.split('|')[1][:7].replace('*', '').replace(':', '')
+#     head = 'HLA' + head
+#     if head != HLA:
+#         continue
 
-hla_and_epitopes = np.unique(hla_and_epitopes)
+#     # Load the CSV for that HLA
+#     iedb_path = f"/global/scratch/users/sergiomar10/data/IEDB_SQL/IEDB_{head}_final.csv"
+#     df = pd.read_csv(iedb_path, header=None)
+#     df.columns = [
+#         'sequence', 'ref_ID', 'submissionID', 'Epitope_ID', 'protein_origin',
+#         'ID_SOURCE', "SOURCE_ORGANISM", "IC50_nM", "DESCRIPTION_BINDING", "Year_submission"
+#     ]
+#     # Filter to "Positive" sequences
+#     df = df[df['DESCRIPTION_BINDING'].str.contains("Positive")][["ref_ID","sequence"]].values
+
+#     for ref_id, epitope in df:
+#         if any(x in epitope for x in ['+', '(', 'X']):
+#             continue
+#         # If your encoding mode = 'HLA', prepend the HLA sequence to epitope
+#         if encoding == 'HLA':
+#             epitope = hla_seq + epitope
+
+#         hla_and_epitopes.append(epitope)
+
+hla_and_epitopes = iedb_complete['peptide'].unique()
 
 max_length = np.max([len(x) for x in hla_and_epitopes])
 

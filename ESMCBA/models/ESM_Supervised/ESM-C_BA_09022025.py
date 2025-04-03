@@ -215,10 +215,10 @@ epitope_data['IC50_nM'] = epitope_data['IC50_nM'].apply(np.log10)
 
 epitope_data['Year_submission'] = epitope_data['Year_submission'].astype(str)
 epitope_data['Year_submission'] = epitope_data['Year_submission'].str.replace('\\N', '0', regex=False)
-epitope_data['Year_submission'] = epitope_data['Year_submission'].astype(int)
+epitope_data['Year_submission'] = epito
+pe_data['Year_submission'].astype(int)
 
 epitope_data = epitope_data[["IC50_nM","sequence","Year_submission"]]
-
 epitope_data = epitope_data.values
 
 filtered_data = []

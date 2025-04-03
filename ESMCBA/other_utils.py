@@ -24,8 +24,10 @@ def get_all_evaluations(path = '/global/scratch/users/sergiomar10/losses/ESMCBA_
 
         creation_time = os.path.getctime(path)
         creation_date = datetime.datetime.fromtimestamp(creation_time)
-
-        df = pd.read_csv(path)
+        try:
+            df = pd.read_csv(path, sep=',')
+        except:
+            print(path)
 
         num_evaluations = len(df)
         # Compute correlation metrics
@@ -38,18 +40,15 @@ def get_all_evaluations(path = '/global/scratch/users/sergiomar10/losses/ESMCBA_
         r2 = r2_score(df['measured'], df['prediction'])
         rmse = np.sqrt(mse)
 
-
         if '_MSE_' in path:
             loss = 'MSE'
         else:
             loss = 'Hubber' 
         
         name = path.split('_')
-        if len(name) < 14:
-            continue
 
         HLA = name[14]
-
+    
         evaluations_df.append([
             HLA,
             loss,
@@ -68,6 +67,7 @@ def get_all_evaluations(path = '/global/scratch/users/sergiomar10/losses/ESMCBA_
             creation_date,
             path
         ])
+
 
     columns_to_name = ['HLA','Losses','encoding','data_prop','trained_blocks','lr_transformer','lr_regression','n_evaluations','spearman','pearsonr','mse','mae','r2','rmse','time','path']
 
