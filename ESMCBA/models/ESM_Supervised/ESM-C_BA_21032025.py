@@ -185,6 +185,10 @@ def split_data(aggregated, size_of_train=1.0):
     final_train = pd.DataFrame({"sequence": sampled_sequences, "label": sampled_labels})
     train_data, val_data = train_test_split(final_train, test_size=0.1, shuffle=True)
     eval_data = aggregated[aggregated['testing'] > 2019]
+
+    if len(eval_data) == 0:
+        eval_data = val_data
+
     return train_data[['sequence', 'label']], val_data[['sequence', 'label']], eval_data[['sequence', 'label']]
     
 # Dataset class
@@ -319,7 +323,8 @@ os.makedirs(loss_dir, exist_ok=True)
 eval_df.to_csv(os.path.join(loss_dir, f'evaluation_{name_of_model}.csv'), index=False)
 print(f"Saved evaluation to {os.path.join(loss_dir, f'evaluation_{name_of_model}.csv')}")
 
-if eval_spearman > 0.30:
+
+if aggregated[aggregated['testing'] > 2019]['sequence'].nunique() < 10:
     training_dir = os.path.join(loss_dir, 'training_data')
     os.makedirs(training_dir, exist_ok=True)
     train_data.to_csv(os.path.join(training_dir, f'{name_of_model}.csv'), index=False)
@@ -329,3 +334,15 @@ if eval_spearman > 0.30:
     os.makedirs(model_dir, exist_ok=True)
     torch.save(best_model_state, os.path.join(model_dir, f'{name_of_model}_final.pth'))
     print(f"Saved best model to {os.path.join(model_dir, f'{name_of_model}_final.pth')}")
+
+else:
+    if eval_spearman > 0.30:
+        training_dir = os.path.join(loss_dir, 'training_data')
+        os.makedirs(training_dir, exist_ok=True)
+        train_data.to_csv(os.path.join(training_dir, f'{name_of_model}.csv'), index=False)
+        
+        HLA_folder = HLA.replace("*", "").replace(":", "")
+        model_dir = f'/global/scratch/users/sergiomar10/models/ESMCBA_21032025/{HLA_folder}/'
+        os.makedirs(model_dir, exist_ok=True)
+        torch.save(best_model_state, os.path.join(model_dir, f'{name_of_model}_final.pth'))
+        print(f"Saved best model to {os.path.join(model_dir, f'{name_of_model}_final.pth')}")

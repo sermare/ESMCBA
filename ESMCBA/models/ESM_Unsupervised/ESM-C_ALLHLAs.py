@@ -490,8 +490,38 @@ print(f"Per-token evaluation metrics saved to {per_token_csv_path}", flush=True)
 
 
 
-if val_acc > 0.20:
-    
+if eval_seqs < 10:
+
+    if val_acc > 0.20:
+        
+        #########################################################
+        # Saving the Model
+        #########################################################
+        HLA_folder = HLA.replace("*", "").replace(":", "")
+        model_dir = f'/global/scratch/users/sergiomar10/models/ESMC_Pretrain/HLA{HLA_folder}/'
+        os.makedirs(model_dir, exist_ok=True)
+        
+        model_save_path = os.path.join(model_dir, f"{name_of_model}.pt")
+        config_save_path = os.path.join(model_dir, f"{name_of_model}.json")
+        
+        model_to_save = {
+            "model_state_dict": model_masked.state_dict(),
+            "config": {
+                "hidden_dim": 960,
+                "num_aa": 33,
+                "model_type": "ESMCMasked"
+            }
+        }
+        
+        torch.save(model_to_save, model_save_path)
+        with open(config_save_path, "w") as f:
+            json.dump(model_to_save["config"], f)
+        
+        print(f"Trained model saved to {model_save_path}")
+        print(f"Configuration saved to {config_save_path}")
+
+else:
+
     #########################################################
     # Saving the Model
     #########################################################
@@ -517,3 +547,4 @@ if val_acc > 0.20:
     
     print(f"Trained model saved to {model_save_path}")
     print(f"Configuration saved to {config_save_path}")
+
