@@ -190,11 +190,11 @@ iedb_complete = iedb_complete[(iedb_complete['Qual'].str.contains('Positive') )]
 
 #         hla_and_epitopes.append(epitope)
 
-hla_and_epitopes = iedb_complete['peptide'].unique()
+hla_and_epitopes = iedb_complete['peptide'].unique() # [:100] 
 
 max_length = np.max([len(x) for x in hla_and_epitopes])
 
-random.shuffle(hla_and_epitopes)
+# random.shuffle(hla_and_epitopes)
 print(f"Filtered {len(hla_and_epitopes)} sequences for training.", flush=True)
 
 train_seqs, temp_seqs = train_test_split(hla_and_epitopes, test_size=0.2, random_state=42)
@@ -209,7 +209,6 @@ for seq in train_seqs:
         augmented_train_seqs.append(seq)
 
 print(f"After augmentation: {len(augmented_train_seqs)} training sequences.", flush=True)
-
 
 print(
     f"Data split: {len(train_seqs)} train, "
@@ -234,7 +233,6 @@ class MaskedProteinDataset(Dataset):
 
     def __getitem__(self, idx):
         seq = self.sequences[idx]
-        # 1) Tokenize the entire sequence up to self.max_length
         encoding = self.tokenizer(
             seq,
             return_tensors='pt',
@@ -242,47 +240,43 @@ class MaskedProteinDataset(Dataset):
             truncation=True,
             max_length=self.max_length
         )
-        input_ids = encoding['input_ids'].squeeze(0)        # shape [seq_len]
-        attention_mask = encoding['attention_mask'].squeeze(0)  # shape [seq_len]
+        input_ids = encoding['input_ids'].squeeze(0)
+        attention_mask = encoding['attention_mask'].squeeze(0)
 
-        # 2) Mask only the last 11 real tokens
-        masked_input_ids, labels = self.mask_tokens(input_ids)
+        # Create a seed based on the sequence (or index)
+        seed = abs(hash(seq)) % (2**32 - 1)
+        masked_input_ids, labels = self.mask_tokens(input_ids, seed=seed)
 
-        # Return everything, along with the raw sequence if needed
         return masked_input_ids, attention_mask, labels, seq
 
-    def mask_tokens(self, input_ids):
-        """
-        Masks tokens ONLY within the last 11 real (non-pad) positions.
-        All other positions remain unmasked.
-        """
+
+    def mask_tokens(self, input_ids, seed=None):
+        if seed is not None:
+            torch.manual_seed(seed)
         # Initialize labels to pad_id (which we'll ignore in the loss)
         labels = torch.full_like(input_ids, self.pad_id)
 
         # Identify all non-pad token positions
         nonpad_positions = (input_ids != self.pad_id).nonzero(as_tuple=True)[0]
         if len(nonpad_positions) == 0:
-            # Edge case: if there's nothing but padding, just return as-is
             return input_ids, labels
 
-        # We'll only allow masking within the last 11 real tokens
-        # e.g., if we have 15 real tokens, we choose positions [-11:].
-        # if we have fewer than 11 real tokens, then it's effectively "mask up to length"
-        maskable_positions = nonpad_positions[-11:]  # slice last 11 indices
+        # Allow masking only within the last 11 real tokens
+        maskable_positions = nonpad_positions[-11:]
 
-        # Create a probability vector of 0 for all tokens, except for these last 11 real ones
+        # Create a probability vector: only last 11 tokens have a chance to be masked
         probs = torch.zeros_like(input_ids, dtype=torch.float)
-        probs[maskable_positions] = self.mlm_probability  # mlm_probability only for last 11
+        probs[maskable_positions] = self.mlm_probability
 
-        # Decide which of those positions to actually mask
+        # Decide which positions to mask
         masked_indices = torch.bernoulli(probs).bool()
 
-        # Copy the original token IDs into 'labels' only where we do mask
+        # Set labels only for masked positions and replace in input_ids
         labels[masked_indices] = input_ids[masked_indices]
-        # Replace masked positions in input_ids with <mask> 
         input_ids[masked_indices] = self.mask_id
 
         return input_ids, labels
+
 
 
 def collate_fn(batch):
@@ -300,7 +294,7 @@ def collate_fn(batch):
     return input_ids, attention_mask, labels, list(raw_seqs_list)
 
 
-def get_mlm_dataloader(sequences, base_model, batch_size=8, shuffle=True, max_length=15):
+def get_mlm_dataloader(sequences, base_model, batch_size=8, shuffle=False, max_length=15):
     dataset = MaskedProteinDataset(
         sequences,
         base_model,
@@ -349,7 +343,7 @@ def evaluate_mlm_accuracy(loader):
             # Forward
             logits = model_masked(input_ids, attention_mask)  # [batch_size, seq_len, vocab_size]
             # We only compare at positions where labels != -100
-            mask_positions = (labels != 1)
+            mask_positions = (labels != base_model.tokenizer.pad_token_id)
             if not mask_positions.any():
                 continue
 
@@ -405,57 +399,96 @@ with open(log_file, "w", newline="") as f:
 
 print(f"Training log saved at {log_file}.", flush=True)
 
+
 #########################################################
-# Evaluation: Save predictions on the eval set
+# Evaluation: Compute pseudo-perplexity on the eval set
 #########################################################
-model_masked.eval()
-eval_results = []
+
+eval_results = []       # Per-sequence summary
+per_token_results = []  # Per-token details
+all_token_nlls = []     # For aggregated histogram
 
 model_masked.eval()
-eval_results = []
-
 with torch.no_grad():
     for input_ids, attention_mask, labels, raw_epitopes in eval_loader:
         input_ids = input_ids.to(device)
         attention_mask = attention_mask.to(device)
         labels = labels.to(device)
-
-        logits = model_masked(input_ids, attention_mask)
+        
+        # Forward pass: get logits and then probabilities
+        logits = model_masked(input_ids, attention_mask)  # [batch_size, seq_len, vocab_size]
         probs = F.softmax(logits, dim=-1)
-        preds = torch.argmax(probs, dim=-1)
-
+        
+        # Process each sequence in the batch
         for b in range(input_ids.size(0)):
-            # Grab the actual epitope string for this sample
             epitope_seq = raw_epitopes[b]
+            # Identify masked positions (where label != pad_token_id)
+            mask = (labels[b] != base_model.tokenizer.pad_token_id)
+            masked_positions = torch.where(mask)[0]
+            num_masked = int(mask.sum().item())
+            
+            # If there are masked tokens, compute per-token NLL and average NLL
+            if num_masked > 0:
+                ground_truth_ids = labels[b][mask]                   # Shape: [num_masked]
+                masked_probs = probs[b][mask]                          # Shape: [num_masked, vocab_size]
+                # Gather predicted probabilities for ground truth tokens
+                true_token_probs = masked_probs.gather(1, ground_truth_ids.unsqueeze(1)).squeeze(1)
+                # Compute per-token negative log likelihood (NLL)
 
-            # Identify masked positions
-            masked_positions = (labels[b] != 1)  # or != pad_id
+                eps = 1e-12
+                true_token_probs = torch.clamp(true_token_probs, min=eps)
+                nll = -torch.log(true_token_probs)
 
-            for pos in torch.where(masked_positions)[0]:
+                avg_nll = nll.mean() 
+                pseudo_perplexity = torch.exp(avg_nll).item()
+                token_nll_list = nll.cpu().tolist()
+                all_token_nlls.extend(token_nll_list)
+            else:
+                pseudo_perplexity = float('nan')
+                avg_nll = float('nan')
+                token_nll_list = []
+            
+            # Log per-sequence summary
+            eval_results.append({
+                "epitope": epitope_seq,
+                "pseudo_perplexity": pseudo_perplexity,
+                "num_masked": num_masked,
+                "avg_token_nll": avg_nll if isinstance(avg_nll, float) else avg_nll.item()
+            })
+            
+            # Log per-token details
+            for pos in masked_positions:
                 pos = pos.item()
                 original_id = labels[b, pos].item()
-                pred_id = preds[b, pos].item()
+                pred_id = torch.argmax(probs[b, pos]).item()
                 pred_prob = probs[b, pos, pred_id].item()
-
-                original_aa = base_model.tokenizer.decode([original_id]).strip()
-                predicted_aa = base_model.tokenizer.decode([pred_id]).strip()
-
-                eval_results.append({
-                    "batch_index": b,
-                    "epitope": epitope_seq,         # Store the entire raw epitope
+                token_nll = -torch.log(probs[b, pos, original_id]).item()
+                per_token_results.append({
+                    "epitope": epitope_seq,
                     "position": pos,
-                    "original_aa": original_aa,
-                    "predicted_aa": predicted_aa,
-                    "predicted_prob": pred_prob
+                    "original_id": original_id,
+                    "predicted_id": pred_id,
+                    "predicted_prob": pred_prob,
+                    "token_nll": token_nll
                 })
 
-
+# Save per-sequence summary to CSV
 eval_df = pd.DataFrame(eval_results)
-eval_save_dir = "/global/scratch/users/sergiomar10/data/ESMC_Pretrain"
+eval_save_dir = "/global/scratch/users/sergiomar10/data/ESMC_Pretrain_03042025_evals"
 os.makedirs(eval_save_dir, exist_ok=True)
-eval_csv_path = os.path.join(eval_save_dir, f"{name_of_model}.csv")
+eval_csv_path = os.path.join(eval_save_dir, f"{name_of_model}_perplexity.csv")
 eval_df.to_csv(eval_csv_path, index=False)
-print(f"Evaluation predictions saved to {eval_csv_path}", flush=True)
+print(f"Evaluation summary saved to {eval_csv_path}", flush=True)
+
+# Save per-token details to CSV
+eval_save_dir = "/global/scratch/users/sergiomar10/data/ESMC_Pretrain_03042025_perplexity"
+os.makedirs(eval_save_dir, exist_ok=True)
+per_token_df = pd.DataFrame(per_token_results)
+per_token_csv_path = os.path.join(eval_save_dir, f"{name_of_model}_per_token_metrics.csv")
+per_token_df.to_csv(per_token_csv_path, index=False)
+print(f"Per-token evaluation metrics saved to {per_token_csv_path}", flush=True)
+
+
 
 if val_acc > 0.20:
     
