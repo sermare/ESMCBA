@@ -167,9 +167,13 @@ def split_data(aggregated, size_of_train=1.0):
     bin_centers = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5]
     
     # Fit KDE to log(IC50) data
-    kde = gaussian_kde(pre_2019_data["label"])
-    pmf = kde(bin_centers)  # Probability density at bin centers
-    pmf /= pmf.sum()  # Normalize to sum to 1
+    # kde = gaussian_kde(pre_2019_data["label"])
+    # pmf = kde(bin_centers)  # Probability density at bin centers
+    # pmf /= pmf.sum()  # Normalize to sum to 1
+    
+    pmf = norm.pdf(bin_centers, loc=3, scale=1.0)
+    pmf /= pmf.sum()
+    total_samples = int(size_of_train * len(pre_2019_data))
     bin_samples = np.round(pmf * total_samples).astype(int)
     
     sampled_sequences, sampled_labels = [], []
@@ -323,20 +327,29 @@ os.makedirs(loss_dir, exist_ok=True)
 eval_df.to_csv(os.path.join(loss_dir, f'evaluation_{name_of_model}.csv'), index=False)
 print(f"Saved evaluation to {os.path.join(loss_dir, f'evaluation_{name_of_model}.csv')}")
 
-
+# Save training data if conditions are met
 if aggregated[aggregated['testing'] > 2019]['sequence'].nunique() < 10:
-    training_dir = os.path.join(loss_dir, 'training_data')
-    os.makedirs(training_dir, exist_ok=True)
-    train_data.to_csv(os.path.join(training_dir, f'{name_of_model}.csv'), index=False)
-    
-    HLA_folder = HLA.replace("*", "").replace(":", "")
-    model_dir = f'/global/scratch/users/sergiomar10/models/ESMCBA_21032025/{HLA_folder}/'
-    os.makedirs(model_dir, exist_ok=True)
-    torch.save(best_model_state, os.path.join(model_dir, f'{name_of_model}_final.pth'))
-    print(f"Saved best model to {os.path.join(model_dir, f'{name_of_model}_final.pth')}")
+    mse = lambda x, y: np.mean((x - y) ** 2)
+    eval_targets = np.array(eval_targets)
+    eval_predictions = np.array(eval_predictions)
+    # Calculate MSE
+    mse_value = mse(eval_targets, eval_predictions)
+    print(f"MSE: {mse_value:.4f}", flush=True)
+    # Save training data if MSE is below threshold
+
+    if mse_value < 0.5:  
+        training_dir = os.path.join(loss_dir, 'training_data')
+        os.makedirs(training_dir, exist_ok=True)
+        train_data.to_csv(os.path.join(training_dir, f'{name_of_model}.csv'), index=False)
+        
+        HLA_folder = HLA.replace("*", "").replace(":", "")
+        model_dir = f'/global/scratch/users/sergiomar10/models/ESMCBA_21032025/{HLA_folder}/'
+        os.makedirs(model_dir, exist_ok=True)
+        torch.save(best_model_state, os.path.join(model_dir, f'{name_of_model}_final.pth'))
+        print(f"Saved best model to {os.path.join(model_dir, f'{name_of_model}_final.pth')}")
 
 else:
-    if eval_spearman > 0.30:
+    if eval_spearman > 0.40:
         training_dir = os.path.join(loss_dir, 'training_data')
         os.makedirs(training_dir, exist_ok=True)
         train_data.to_csv(os.path.join(training_dir, f'{name_of_model}.csv'), index=False)
