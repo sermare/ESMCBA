@@ -27,7 +27,7 @@ parser.add_argument('--encoding', type=str, default='ESM-C', help='Name prefix f
 parser.add_argument('--blocks_unfrozen', type=int, default=5, help='Unfrozen blocks')
 parser.add_argument('--base_block_lr', type=float, default=1e-5, help='LR for transformer blocks')
 parser.add_argument('--regression_block_lr', type=float, default=1e-5, help='LR for mask head')
-parser.add_argument('--HLA', type=str, default='HLA0201', help='HLA Type')
+parser.add_argument('--HLA', type=str, default='HLAA0201', help='HLA Type')
 parser.add_argument('--num_augmentations', type=int, default=1, help='Number of Augmentations')
 
 args = parser.parse_args()
@@ -72,11 +72,14 @@ class ESMCMasked(nn.Module):
           out_logits: [batch_size, seq_len, num_aa]
         """
         # 1) ESM forward
-        #    If your ESM model supports input_ids directly (like a HuggingFace model),
-        #    do something like:
-        outputs = self.base_model.forward(input_ids )
+        #    If your ESM model supports input_ids and attention_mask directly:
+        outputs = self.base_model(
+            input_ids,
+            # attention_mask=attention_mask  ### FIX: pass attention_mask if supported
+        )
+        
         # outputs.hidden_states[-1]: [batch_size, seq_len, hidden_dim]
-        hidden_states = outputs.hidden_states[-1].to(torch.float32) # ensure float32
+        hidden_states = outputs.hidden_states[-1].to(torch.float32)
 
         # 2) Pass through the custom LM head
         out_logits = self.mask_head(hidden_states)  # [batch_size, seq_len, num_aa]
@@ -115,7 +118,9 @@ optimizer = optim.Adam(
     ],
     weight_decay=1e-5
 )
-criterion = nn.CrossEntropyLoss(ignore_index=model_masked.base_model.tokenizer.pad_token_id)  # We'll use -100 for masked positions
+
+# Note: We ignore pad_token_id in the loss so only masked tokens are trained
+criterion = nn.CrossEntropyLoss(ignore_index=model_masked.base_model.tokenizer.pad_token_id)
 
 #########################################################
 # Standard AA Mappings (for reference/logging)
@@ -151,82 +156,60 @@ def parse_fasta(file_path):
     return sequences
 
 #########################################################
-# Load + Filter Data
+# Load HLA Sequences
 #########################################################
-train_fasta_path = "/global/scratch/users/sergiomar10/jupyter_notebooks/hla_protein_sequences.fasta"
-# all_data = parse_fasta(train_fasta_path)
+fasta_path = "/global/scratch/users/sergiomar10/ESMCBA/ESMCBA/jupyter_notebooks/hla_sequences.fasta"
+hla_data = parse_fasta(fasta_path)
+
+hla_sequences = [
+    seq for header, seq in hla_data
+    if header.replace(':','').replace('*','') == HLA.replace("HLA", "")
+][0]
+
+
+print(f"Loaded {len(hla_sequences)} HLA sequences from {fasta_path}", flush=True)
+
+IEDB_full = pd.read_csv('/global/scratch/users/sergiomar10/ESMCBA/IEDB_subseted_HLA_w_BA_full_for_training.csv',
+                        sep=',', header=0)
+                        
+IEDB_full_subset = IEDB_full[IEDB_full['MHC Restriction - Name'] == HLA]
+IEDB_full_subset = IEDB_full_subset[IEDB_full_subset['Assay - Qualitative Measurement'].str.contains('Positive')]
+
+peptides = IEDB_full_subset['Epitope - Name'].unique()
 
 hla_and_epitopes = []
-
-allele =  HLA.replace('HLA', '')
-
-iedb_complete = pd.read_csv(f'/clusterfs/nilah/sergio/iedb_sql_epitopes/HLA-{allele}_sql.csv', header = None)
-iedb_complete.columns = ['HLA','peptide','BA','Qual','Literature','Submission']
-iedb_complete = iedb_complete[(iedb_complete['Qual'].str.contains('Positive') )]
-
-# for head, hla_seq in all_data:
-#     # Parse out the HLA naming from header
-#     head = head.split('|')[1][:7].replace('*', '').replace(':', '')
-#     head = 'HLA' + head
-#     if head != HLA:
-#         continue
-
-#     # Load the CSV for that HLA
-#     iedb_path = f"/global/scratch/users/sergiomar10/data/IEDB_SQL/IEDB_{head}_final.csv"
-#     df = pd.read_csv(iedb_path, header=None)
-#     df.columns = [
-#         'sequence', 'ref_ID', 'submissionID', 'Epitope_ID', 'protein_origin',
-#         'ID_SOURCE', "SOURCE_ORGANISM", "IC50_nM", "DESCRIPTION_BINDING", "Year_submission"
-#     ]
-#     # Filter to "Positive" sequences
-#     df = df[df['DESCRIPTION_BINDING'].str.contains("Positive")][["ref_ID","sequence"]].values
-
-#     for ref_id, epitope in df:
-#         if any(x in epitope for x in ['+', '(', 'X']):
-#             continue
-#         # If your encoding mode = 'HLA', prepend the HLA sequence to epitope
-#         if encoding == 'HLA':
-#             epitope = hla_seq + epitope
-
-#         hla_and_epitopes.append(epitope)
-
-hla_and_epitopes = iedb_complete['peptide'].unique() # [:100] 
+for epitope in peptides:
+    if any(x in epitope for x in ['+', '(', 'X']):
+        continue
+    if encoding == 'HLA':
+        combined = hla_sequences + epitope
+        max_length_hla = len(hla_sequences)
+    else:
+        combined = epitope
+        max_length_hla = 0
+    hla_and_epitopes.append(combined)
 
 max_length = np.max([len(x) for x in hla_and_epitopes])
 
-# random.shuffle(hla_and_epitopes)
 print(f"Filtered {len(hla_and_epitopes)} sequences for training.", flush=True)
 
 train_seqs, temp_seqs = train_test_split(hla_and_epitopes, test_size=0.2, random_state=42)
 val_seqs, eval_seqs = train_test_split(temp_seqs, test_size=0.5, random_state=42)
 
 print(f"Data split: {len(train_seqs)} train, {len(val_seqs)} val, {len(eval_seqs)} eval.", flush=True)
-
-# Now, apply augmentation only to the training set
-augmented_train_seqs = []
-for seq in train_seqs:
-    for _ in range(num_augmentations):
-        augmented_train_seqs.append(seq)
-
-print(f"After augmentation: {len(augmented_train_seqs)} training sequences.", flush=True)
-
-print(
-    f"Data split: {len(train_seqs)} train, "
-    f"{len(val_seqs)} val, {len(eval_seqs)} eval.",
-    flush=True
-)
-
 #########################################################
 # Masked LM Dataset
 #########################################################
 class MaskedProteinDataset(Dataset):
-    def __init__(self, sequences, base_model, mlm_probability=0.15, max_length=15):
+    def __init__(self, sequences, base_model, mlm_probability=0.15,
+                 max_length=15, max_length_hla=350):
         self.sequences = sequences
         self.tokenizer = base_model.tokenizer
         self.mlm_probability = mlm_probability
         self.max_length = max_length
-        self.pad_id = self.tokenizer.pad_token_id  # e.g. 1
-        self.mask_id = self.tokenizer.mask_token_id  # e.g. 32
+        self.max_length_hla = max_length_hla
+        self.pad_id = self.tokenizer.pad_token_id
+        self.mask_id = self.tokenizer.mask_token_id
 
     def __len__(self):
         return len(self.sequences)
@@ -242,64 +225,54 @@ class MaskedProteinDataset(Dataset):
         )
         input_ids = encoding['input_ids'].squeeze(0)
         attention_mask = encoding['attention_mask'].squeeze(0)
-
-        # Create a seed based on the sequence (or index)
-        seed = abs(hash(seq)) % (2**32 - 1)
-        masked_input_ids, labels = self.mask_tokens(input_ids, seed=seed)
-
+        
+        # Mask only the last `self.max_length_hla` real (non-pad) tokens
+        masked_input_ids, labels = self.mask_tokens(input_ids)
         return masked_input_ids, attention_mask, labels, seq
 
-
     def mask_tokens(self, input_ids, seed=None):
-        if seed is not None:
-            torch.manual_seed(seed)
-        # Initialize labels to pad_id (which we'll ignore in the loss)
+        """Mask tokens in the last `self.max_length_hla` positions only."""
         labels = torch.full_like(input_ids, self.pad_id)
-
-        # Identify all non-pad token positions
+        
+        # Identify which positions are real (non-pad)
         nonpad_positions = (input_ids != self.pad_id).nonzero(as_tuple=True)[0]
         if len(nonpad_positions) == 0:
             return input_ids, labels
 
-        # Allow masking only within the last 11 real tokens
-        maskable_positions = nonpad_positions[-11:]
+        # ### CHANGED ###
+        # Restrict masking to the last `self.max_length_hla` positions:
+        maskable_positions = nonpad_positions[self.max_length_hla:]
 
-        # Create a probability vector: only last 11 tokens have a chance to be masked
+        # Build a probability vector of 0 everywhere except these last positions
         probs = torch.zeros_like(input_ids, dtype=torch.float)
         probs[maskable_positions] = self.mlm_probability
-
-        # Decide which positions to mask
+        
+        # Sample Bernoulli to decide which tokens to mask
         masked_indices = torch.bernoulli(probs).bool()
-
-        # Set labels only for masked positions and replace in input_ids
+        
+        # Record the original token in `labels`
         labels[masked_indices] = input_ids[masked_indices]
+        # Replace input_ids with [MASK] token
         input_ids[masked_indices] = self.mask_id
 
         return input_ids, labels
 
 
-
 def collate_fn(batch):
-    """
-    batch is a list of tuples:
-        (masked_input_ids, attention_mask, labels, raw_sequence)
-    """
     input_ids_list, attn_masks_list, labels_list, raw_seqs_list = zip(*batch)
-
     input_ids = torch.stack(input_ids_list, dim=0)
     attention_mask = torch.stack(attn_masks_list, dim=0)
     labels = torch.stack(labels_list, dim=0)
-
-    # raw_seqs_list is a tuple of strings (the raw epitopes), so just keep it as a list
     return input_ids, attention_mask, labels, list(raw_seqs_list)
 
-
-def get_mlm_dataloader(sequences, base_model, batch_size=8, shuffle=False, max_length=15):
+def get_mlm_dataloader(sequences, base_model, batch_size=8, shuffle=False,
+                       max_length=15, max_length_hla=11):
     dataset = MaskedProteinDataset(
         sequences,
         base_model,
         mlm_probability=0.15,
-        max_length=max_length
+        max_length=max_length,
+        max_length_hla=max_length_hla
     )
     loader = DataLoader(
         dataset,
@@ -312,23 +285,35 @@ def get_mlm_dataloader(sequences, base_model, batch_size=8, shuffle=False, max_l
 #########################################################
 # Create DataLoaders
 #########################################################
-
 base_model = model_masked.base_model
 
+# Repeat train_seqs for data augmentation
+train_seqs = train_seqs * num_augmentations
+
 batch_size = 8
-train_loader = get_mlm_dataloader(train_seqs, base_model, batch_size=batch_size, shuffle=True, max_length=max_length)
-val_loader   = get_mlm_dataloader(val_seqs,   base_model, batch_size=batch_size, shuffle=False, max_length=max_length)
-eval_loader  = get_mlm_dataloader(eval_seqs,  base_model, batch_size=batch_size, shuffle=False, max_length=max_length)
+train_loader = get_mlm_dataloader(
+    train_seqs, base_model, batch_size=batch_size,
+    shuffle=True, max_length=max_length, max_length_hla=max_length_hla
+)
+val_loader = get_mlm_dataloader(
+    val_seqs, base_model, batch_size=batch_size,
+    shuffle=False, max_length=max_length, max_length_hla=max_length_hla
+)
+eval_loader = get_mlm_dataloader(
+    eval_seqs, base_model, batch_size=batch_size,
+    shuffle=False, max_length=max_length, max_length_hla=max_length_hla
+)
 
 #########################################################
 # Training and Validation Loops
 #########################################################
 num_epochs = 10
-save_dir = "/global/scratch/users/sergiomar10/logs/ESMC_Pretrain_logs"
+save_dir = "/global/scratch/users/sergiomar10/logs/ESMC_Pretrain_logs_09042025"
 os.makedirs(save_dir, exist_ok=True)
 log_file = os.path.join(save_dir, f"training_log_{name_of_model}.csv")
 
-# Simple function to measure MLM accuracy on masked positions
+
+
 def evaluate_mlm_accuracy(loader):
     """Compute how often the model guesses the correct token for the masked tokens."""
     model_masked.eval()
@@ -340,21 +325,20 @@ def evaluate_mlm_accuracy(loader):
             attention_mask = attention_mask.to(device)
             labels = labels.to(device)
 
-            # Forward
-            logits = model_masked(input_ids, attention_mask)  # [batch_size, seq_len, vocab_size]
-            # We only compare at positions where labels != -100
+            logits = model_masked(input_ids, attention_mask)
             mask_positions = (labels != base_model.tokenizer.pad_token_id)
             if not mask_positions.any():
                 continue
 
-            # Predictions
-            preds = torch.argmax(logits, dim=-1)  # [batch_size, seq_len]
+            preds = torch.argmax(logits, dim=-1)
             correct += (preds[mask_positions] == labels[mask_positions]).sum().item()
             total += mask_positions.sum().item()
 
     model_masked.train()
     return correct / total if total > 0 else 0.0
 
+
+print("Starting training...", flush=True)
 with open(log_file, "w", newline="") as f:
     writer = csv.writer(f)
     writer.writerow(["Epoch", "Train Loss", "Train Acc", "Val Acc"])
@@ -368,11 +352,8 @@ with open(log_file, "w", newline="") as f:
             attention_mask = attention_mask.to(device)
             labels = labels.to(device)
 
-            # Forward
-            logits = model_masked(input_ids, attention_mask)  # [batch_size, seq_len, vocab_size]
+            logits = model_masked(input_ids, attention_mask)
 
-            # CrossEntropyLoss expects shape [batch_size * seq_len, vocab_size]
-            # and labels: [batch_size * seq_len]
             logits_2d = logits.view(-1, logits.size(-1))
             labels_1d = labels.view(-1)
 
@@ -386,7 +367,7 @@ with open(log_file, "w", newline="") as f:
 
         avg_loss = total_loss / len(train_loader)
         train_acc = evaluate_mlm_accuracy(train_loader)
-        val_acc   = evaluate_mlm_accuracy(val_loader)
+        val_acc = evaluate_mlm_accuracy(val_loader)
 
         print(
             f"Epoch {epoch+1}/{num_epochs} | "
@@ -399,14 +380,12 @@ with open(log_file, "w", newline="") as f:
 
 print(f"Training log saved at {log_file}.", flush=True)
 
-
 #########################################################
 # Evaluation: Compute pseudo-perplexity on the eval set
 #########################################################
-
-eval_results = []       # Per-sequence summary
-per_token_results = []  # Per-token details
-all_token_nlls = []     # For aggregated histogram
+eval_results = []
+per_token_results = []
+all_token_nlls = []
 
 model_masked.eval()
 with torch.no_grad():
@@ -414,32 +393,24 @@ with torch.no_grad():
         input_ids = input_ids.to(device)
         attention_mask = attention_mask.to(device)
         labels = labels.to(device)
-        
-        # Forward pass: get logits and then probabilities
-        logits = model_masked(input_ids, attention_mask)  # [batch_size, seq_len, vocab_size]
+
+        logits = model_masked(input_ids, attention_mask)
         probs = F.softmax(logits, dim=-1)
-        
-        # Process each sequence in the batch
+
         for b in range(input_ids.size(0)):
             epitope_seq = raw_epitopes[b]
-            # Identify masked positions (where label != pad_token_id)
             mask = (labels[b] != base_model.tokenizer.pad_token_id)
             masked_positions = torch.where(mask)[0]
             num_masked = int(mask.sum().item())
-            
-            # If there are masked tokens, compute per-token NLL and average NLL
-            if num_masked > 0:
-                ground_truth_ids = labels[b][mask]                   # Shape: [num_masked]
-                masked_probs = probs[b][mask]                          # Shape: [num_masked, vocab_size]
-                # Gather predicted probabilities for ground truth tokens
-                true_token_probs = masked_probs.gather(1, ground_truth_ids.unsqueeze(1)).squeeze(1)
-                # Compute per-token negative log likelihood (NLL)
 
+            if num_masked > 0:
+                ground_truth_ids = labels[b][mask]
+                masked_probs = probs[b][mask]
+                true_token_probs = masked_probs.gather(1, ground_truth_ids.unsqueeze(1)).squeeze(1)
                 eps = 1e-12
                 true_token_probs = torch.clamp(true_token_probs, min=eps)
                 nll = -torch.log(true_token_probs)
-
-                avg_nll = nll.mean() 
+                avg_nll = nll.mean()
                 pseudo_perplexity = torch.exp(avg_nll).item()
                 token_nll_list = nll.cpu().tolist()
                 all_token_nlls.extend(token_nll_list)
@@ -447,16 +418,14 @@ with torch.no_grad():
                 pseudo_perplexity = float('nan')
                 avg_nll = float('nan')
                 token_nll_list = []
-            
-            # Log per-sequence summary
+
             eval_results.append({
                 "epitope": epitope_seq,
                 "pseudo_perplexity": pseudo_perplexity,
                 "num_masked": num_masked,
-                "avg_token_nll": avg_nll if isinstance(avg_nll, float) else avg_nll.item()
+                "avg_token_nll": float(avg_nll) if torch.is_tensor(avg_nll) else avg_nll
             })
-            
-            # Log per-token details
+
             for pos in masked_positions:
                 pos = pos.item()
                 original_id = labels[b, pos].item()
@@ -472,38 +441,35 @@ with torch.no_grad():
                     "token_nll": token_nll
                 })
 
-# Save per-sequence summary to CSV
-eval_df = pd.DataFrame(eval_results)
-eval_save_dir = "/global/scratch/users/sergiomar10/data/ESMC_Pretrain_03042025_evals"
+eval_save_dir = "/global/scratch/users/sergiomar10/data/ESMC_Pretrain_09042025_evals"
 os.makedirs(eval_save_dir, exist_ok=True)
 eval_csv_path = os.path.join(eval_save_dir, f"{name_of_model}_perplexity.csv")
-eval_df.to_csv(eval_csv_path, index=False)
+df_eval = pd.DataFrame(eval_results)
+df_eval['epitope'] = df_eval['epitope'].apply(lambda x: x[max_length_hla:])
+df_eval.to_csv(eval_csv_path, index=False)
 print(f"Evaluation summary saved to {eval_csv_path}", flush=True)
 
-# Save per-token details to CSV
-eval_save_dir = "/global/scratch/users/sergiomar10/data/ESMC_Pretrain_03042025_perplexity"
+eval_save_dir = "/global/scratch/users/sergiomar10/data/ESMC_Pretrain_09042025_perplexity"
 os.makedirs(eval_save_dir, exist_ok=True)
-per_token_df = pd.DataFrame(per_token_results)
 per_token_csv_path = os.path.join(eval_save_dir, f"{name_of_model}_per_token_metrics.csv")
-per_token_df.to_csv(per_token_csv_path, index=False)
+per_token_results_df = pd.DataFrame(per_token_results)
+per_token_results_df['epitope'] = per_token_results_df['epitope'].apply(lambda x: x[max_length_hla:])
+per_token_results_df.to_csv(per_token_csv_path, index=False)
 print(f"Per-token evaluation metrics saved to {per_token_csv_path}", flush=True)
 
-
-
-if eval_seqs < 10:
-
+### FIX: Use len(eval_seqs) instead of eval_seqs < 10
+if len(eval_seqs) < 10:
     if val_acc > 0.20:
-        
         #########################################################
         # Saving the Model
         #########################################################
         HLA_folder = HLA.replace("*", "").replace(":", "")
         model_dir = f'/global/scratch/users/sergiomar10/models/ESMC_Pretrain/HLA{HLA_folder}/'
         os.makedirs(model_dir, exist_ok=True)
-        
+
         model_save_path = os.path.join(model_dir, f"{name_of_model}.pt")
         config_save_path = os.path.join(model_dir, f"{name_of_model}.json")
-        
+
         model_to_save = {
             "model_state_dict": model_masked.state_dict(),
             "config": {
@@ -512,26 +478,24 @@ if eval_seqs < 10:
                 "model_type": "ESMCMasked"
             }
         }
-        
+
         torch.save(model_to_save, model_save_path)
         with open(config_save_path, "w") as f:
             json.dump(model_to_save["config"], f)
-        
+
         print(f"Trained model saved to {model_save_path}")
         print(f"Configuration saved to {config_save_path}")
-
 else:
-
     #########################################################
     # Saving the Model
     #########################################################
     HLA_folder = HLA.replace("*", "").replace(":", "")
-    model_dir = f'/global/scratch/users/sergiomar10/models/ESMC_Pretrain/HLA{HLA_folder}/'
+    model_dir = f'/global/scratch/users/sergiomar10/models/ESMC_Pretrain/{HLA_folder}/'
     os.makedirs(model_dir, exist_ok=True)
-    
+
     model_save_path = os.path.join(model_dir, f"{name_of_model}.pt")
     config_save_path = os.path.join(model_dir, f"{name_of_model}.json")
-    
+
     model_to_save = {
         "model_state_dict": model_masked.state_dict(),
         "config": {
@@ -540,11 +504,10 @@ else:
             "model_type": "ESMCMasked"
         }
     }
-    
+
     torch.save(model_to_save, model_save_path)
     with open(config_save_path, "w") as f:
         json.dump(model_to_save["config"], f)
-    
+
     print(f"Trained model saved to {model_save_path}")
     print(f"Configuration saved to {config_save_path}")
-
