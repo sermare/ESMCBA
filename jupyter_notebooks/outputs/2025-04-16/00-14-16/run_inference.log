@@ -1,5 +1,0 @@
-[2025-04-16 00:14:16,588][inference.model_runners][INFO] - Reading checkpoint from /clusterfs/nilah/sergio/RFdifussion/sokrypton/RFdiffusion/inference/../models/Complex_base_ckpt.pt
-[2025-04-16 00:14:20,548][inference.model_runners][INFO] - Loading checkpoint.
-[2025-04-16 00:14:20,784][diffusion][INFO] - Using cached IGSO3.
-[2025-04-16 00:14:20,797][__main__][INFO] - Making design /clusterfs/nilah/sergio/RFdifussion/outputs/RUN1_0
-[2025-04-16 00:14:20,798][__main__][INFO] - (cautious mode) Skipping this design because /clusterfs/nilah/sergio/RFdifussion/outputs/RUN1_0.pdb already exists.

@@ -1,7 +1,0 @@
-- inference.output_prefix=/clusterfs/nilah/sergio/RFdifussion/outputs/RUN1
-- inference.num_designs=1
-- diffuser.T=50
-- ppi.hotspot_res=[A7,A9,A59,A63,A66,A70,A99,A159,A167]
-- contigmap.contigs=[9-9]
-- +inference.dump_pdb=True
-- +inference.dump_pdb_path=/clusterfs/nilah/sergio/RFdifussion
