@@ -1,0 +1,56 @@
+[2025-04-16 00:12:12,836][inference.model_runners][INFO] - Reading checkpoint from /clusterfs/nilah/sergio/RFdifussion/sokrypton/RFdiffusion/inference/../models/Complex_base_ckpt.pt
+[2025-04-16 00:12:16,997][inference.model_runners][INFO] - Loading checkpoint.
+[2025-04-16 00:12:17,180][diffusion][INFO] - Calculating IGSO3.
+[2025-04-16 00:12:54,202][__main__][INFO] - Making design /clusterfs/nilah/sergio/RFdifussion/outputs/RUN1_0
+[2025-04-16 00:12:54,209][inference.model_runners][INFO] - Using contig: ['9-9']
+[2025-04-16 00:12:54,341][inference.model_runners][INFO] - Sequence init: ---------
+[2025-04-16 00:13:03,151][inference.model_runners][INFO] - Timestep 50, input to next step: ---------
+[2025-04-16 00:13:04,410][inference.model_runners][INFO] - Timestep 49, input to next step: ---------
+[2025-04-16 00:13:04,980][inference.model_runners][INFO] - Timestep 48, input to next step: ---------
+[2025-04-16 00:13:05,499][inference.model_runners][INFO] - Timestep 47, input to next step: ---------
+[2025-04-16 00:13:06,131][inference.model_runners][INFO] - Timestep 46, input to next step: ---------
+[2025-04-16 00:13:06,765][inference.model_runners][INFO] - Timestep 45, input to next step: ---------
+[2025-04-16 00:13:07,319][inference.model_runners][INFO] - Timestep 44, input to next step: ---------
+[2025-04-16 00:13:07,839][inference.model_runners][INFO] - Timestep 43, input to next step: ---------
+[2025-04-16 00:13:08,359][inference.model_runners][INFO] - Timestep 42, input to next step: ---------
+[2025-04-16 00:13:08,879][inference.model_runners][INFO] - Timestep 41, input to next step: ---------
+[2025-04-16 00:13:09,496][inference.model_runners][INFO] - Timestep 40, input to next step: ---------
+[2025-04-16 00:13:10,023][inference.model_runners][INFO] - Timestep 39, input to next step: ---------
+[2025-04-16 00:13:10,544][inference.model_runners][INFO] - Timestep 38, input to next step: ---------
+[2025-04-16 00:13:11,065][inference.model_runners][INFO] - Timestep 37, input to next step: ---------
+[2025-04-16 00:13:11,585][inference.model_runners][INFO] - Timestep 36, input to next step: ---------
+[2025-04-16 00:13:12,104][inference.model_runners][INFO] - Timestep 35, input to next step: ---------
+[2025-04-16 00:13:12,622][inference.model_runners][INFO] - Timestep 34, input to next step: ---------
+[2025-04-16 00:13:13,243][inference.model_runners][INFO] - Timestep 33, input to next step: ---------
+[2025-04-16 00:13:13,766][inference.model_runners][INFO] - Timestep 32, input to next step: ---------
+[2025-04-16 00:13:14,285][inference.model_runners][INFO] - Timestep 31, input to next step: ---------
+[2025-04-16 00:13:14,804][inference.model_runners][INFO] - Timestep 30, input to next step: ---------
+[2025-04-16 00:13:15,321][inference.model_runners][INFO] - Timestep 29, input to next step: ---------
+[2025-04-16 00:13:15,838][inference.model_runners][INFO] - Timestep 28, input to next step: ---------
+[2025-04-16 00:13:16,459][inference.model_runners][INFO] - Timestep 27, input to next step: ---------
+[2025-04-16 00:13:16,978][inference.model_runners][INFO] - Timestep 26, input to next step: ---------
+[2025-04-16 00:13:17,494][inference.model_runners][INFO] - Timestep 25, input to next step: ---------
+[2025-04-16 00:13:18,012][inference.model_runners][INFO] - Timestep 24, input to next step: ---------
+[2025-04-16 00:13:18,528][inference.model_runners][INFO] - Timestep 23, input to next step: ---------
+[2025-04-16 00:13:19,063][inference.model_runners][INFO] - Timestep 22, input to next step: ---------
+[2025-04-16 00:13:19,579][inference.model_runners][INFO] - Timestep 21, input to next step: ---------
+[2025-04-16 00:13:20,198][inference.model_runners][INFO] - Timestep 20, input to next step: ---------
+[2025-04-16 00:13:20,718][inference.model_runners][INFO] - Timestep 19, input to next step: ---------
+[2025-04-16 00:13:21,234][inference.model_runners][INFO] - Timestep 18, input to next step: ---------
+[2025-04-16 00:13:21,752][inference.model_runners][INFO] - Timestep 17, input to next step: ---------
+[2025-04-16 00:13:22,270][inference.model_runners][INFO] - Timestep 16, input to next step: ---------
+[2025-04-16 00:13:22,791][inference.model_runners][INFO] - Timestep 15, input to next step: ---------
+[2025-04-16 00:13:23,412][inference.model_runners][INFO] - Timestep 14, input to next step: ---------
+[2025-04-16 00:13:23,934][inference.model_runners][INFO] - Timestep 13, input to next step: ---------
+[2025-04-16 00:13:24,453][inference.model_runners][INFO] - Timestep 12, input to next step: ---------
+[2025-04-16 00:13:24,973][inference.model_runners][INFO] - Timestep 11, input to next step: ---------
+[2025-04-16 00:13:25,491][inference.model_runners][INFO] - Timestep 10, input to next step: ---------
+[2025-04-16 00:13:26,152][inference.model_runners][INFO] - Timestep 9, input to next step: ---------
+[2025-04-16 00:13:26,671][inference.model_runners][INFO] - Timestep 8, input to next step: ---------
+[2025-04-16 00:13:27,285][inference.model_runners][INFO] - Timestep 7, input to next step: ---------
+[2025-04-16 00:13:27,807][inference.model_runners][INFO] - Timestep 6, input to next step: ---------
+[2025-04-16 00:13:28,324][inference.model_runners][INFO] - Timestep 5, input to next step: ---------
+[2025-04-16 00:13:28,845][inference.model_runners][INFO] - Timestep 4, input to next step: ---------
+[2025-04-16 00:13:29,363][inference.model_runners][INFO] - Timestep 3, input to next step: ---------
+[2025-04-16 00:13:29,885][inference.model_runners][INFO] - Timestep 2, input to next step: ---------
+[2025-04-16 00:13:30,640][__main__][INFO] - Finished design in 0.61 minutes

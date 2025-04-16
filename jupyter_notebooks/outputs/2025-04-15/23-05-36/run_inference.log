@@ -1,0 +1,8 @@
+[2025-04-15 23:05:36,515][__main__][INFO] - ////////////////////////////////////////////////
+[2025-04-15 23:05:36,516][__main__][INFO] - ///// NO GPU DETECTED! Falling back to CPU /////
+[2025-04-15 23:05:36,516][__main__][INFO] - ////////////////////////////////////////////////
+[2025-04-15 23:05:36,516][rfdiffusion.inference.model_runners][INFO] - Reading checkpoint from /clusterfs/nilah/sergio/RFdifussion/RFdiffusion/rfdiffusion/inference/../../models/Complex_base_ckpt.pt
+[2025-04-15 23:05:39,376][rfdiffusion.inference.model_runners][INFO] - Loading checkpoint.
+[2025-04-15 23:05:39,660][rfdiffusion.diffusion][INFO] - Using cached IGSO3.
+[2025-04-15 23:05:39,670][__main__][INFO] - Making design /clusterfs/nilah/sergio/RFdifussion/outputs/RUN1_0
+[2025-04-15 23:05:39,675][rfdiffusion.inference.model_runners][INFO] - Using contig: ['9-9']
