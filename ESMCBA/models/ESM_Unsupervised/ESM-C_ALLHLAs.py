@@ -458,8 +458,8 @@ per_token_results_df.to_csv(per_token_csv_path, index=False)
 print(f"Per-token evaluation metrics saved to {per_token_csv_path}", flush=True)
 
 ### FIX: Use len(eval_seqs) instead of eval_seqs < 10
-if len(eval_seqs) < 10:
-    if val_acc > 0.20:
+if len(eval_seqs) > 10:
+    if len(eval_seqs) > 0:
         #########################################################
         # Saving the Model
         #########################################################
