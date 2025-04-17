@@ -11,16 +11,10 @@ import argparse
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Run RFdiffusion with visualization")
 parser.add_argument("--name", required=True, help="Output directory name (e.g., EPITOPE_1_16042025)")
-parser.add_argument("--contigs", required=True, help="Contig string (e.g., 9)")
+parser.add_argument("--contigs", type=str, required=True, help="Contig string (e.g., 9)")
 parser.add_argument("--iterations", type=int, required=True, choices=[25, 50, 100, 150, 200], help="Number of RFdiffusion iterations")
 parser.add_argument("--num_seqs", type=int, required=True, help="Number of sequences for AlphaFold")
 args = parser.parse_args()
-
-# Set parameters from arguments
-name = args.name
-contigs = args.contigs
-iterations = args.iterations
-num_seqs = args.num_seqs
 
 RFDIFFUSION_DIR = "/clusterfs/nilah/sergio/RFdifussion/sokrypton/RFdiffusion"
 MODEL_DIR = os.path.join(RFDIFFUSION_DIR, "models")
@@ -409,22 +403,32 @@ def visualize_epitope_mhc(pdb_path, output_png, epitope_chain="D"):
     plt.savefig(output_png.replace(".png", "_pseudo3D.png"))
     plt.close()
     print(f"Saved pseudo-3D PNG to {output_png.replace('.png', '_pseudo3D.png')}")
-# Fixed parameters
 
+# Set parameters from arguments
+name = args.name
+contigs = args.contigs
+contigs = "A1-274/0 B1-100/0 " + contigs
+iterations = args.iterations
+num_seqs = args.num_seqs
+
+# Fixed parameters
 pdb = "/clusterfs/nilah/sergio/RFdifussion/RFdiffusion/structures/7RTD.pdb"
-hotspot = "\"A7,A9,A59,A63,A66,A70,A99,A159,A167\""
+hotspot = "A66,A70,A73,A77,A97,A147,A159" #ONLY HIGH CONTACT
+
 num_designs = 1
-visual = "image"
+# contigs = "A1-274/0 B1-100/0 C1-9"
+visual = "none"
 symmetry = "none"
 order = 1
-chains = "A,B"
-add_potential = True
+chains = "A,B,C"
+add_potential = False
+
+## Parameters for AF
 initial_guess = False
-num_recycles = 12
-use_multimer = False
+num_recycles = 3
+use_multimer = True
 rm_aa = "C"
 mpnn_sampling_temp = 0.1
-
 
 # determine where to save
 path = name
@@ -455,12 +459,6 @@ print("\n \n \n Running RFdiffusion:")
 contigs, copies = run_diffusion(**flags)
 
 import os, time, subprocess
-
-initial_guess = False
-num_recycles = 12
-use_multimer = False
-rm_aa = "C"
-mpnn_sampling_temp = 0.1
 
 # Wait for AlphaFold params
 max_wait = 300
