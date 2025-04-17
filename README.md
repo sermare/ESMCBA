@@ -41,6 +41,7 @@ pip install -r requirements.txt
 If you want to run MHCFlurry predictions side-by-side with ESM results:
 ```bash pip install mhcflurry
 mhcflurry-downloads fetch
+```
 
 ---
 ## **Other**
