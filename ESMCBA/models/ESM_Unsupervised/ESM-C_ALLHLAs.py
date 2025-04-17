@@ -158,7 +158,7 @@ def parse_fasta(file_path):
 #########################################################
 # Load HLA Sequences
 #########################################################
-fasta_path = "/global/scratch/users/sergiomar10/ESMCBA/ESMCBA/jupyter_notebooks/hla_sequences.fasta"
+fasta_path = "/global/scratch/users/sergiomar10/ESMCBA/ESMCBA/jupyter_notebooks/other/hla_sequences.fasta"
 hla_data = parse_fasta(fasta_path)
 
 hla_sequences = [

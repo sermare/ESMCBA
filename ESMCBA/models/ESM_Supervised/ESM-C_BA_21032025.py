@@ -124,19 +124,22 @@ def parse_fasta(file_path):
         if seq:
             sequences.append((header, seq))
     return sequences
+#### ADDED ON APRIL 17 TO HANDLE HLA SEQUENCES
 
-# Load and preprocess data
+fasta_path = "/global/scratch/users/sergiomar10/ESMCBA/ESMCBA/jupyter_notebooks/other/hla_sequences.fasta"
+hla_data = parse_fasta(fasta_path)
+
+hla_sequences = [
+    seq for header, seq in hla_data
+    if header.replace(':','').replace('*','') == HLA.replace("HLA", "")
+][0]
+
+print(f"Loaded {len(hla_sequences)} HLA sequences from {fasta_path}", flush=True)
+
 train_fasta = f"/global/scratch/users/sergiomar10/data/IEDB_SQL/IEDB_HLA{HLA}_final.csv"
-epitope_data = pd.read_csv(train_fasta, header=None)
-epitope_data.columns = ['sequence', 'ref_ID', 'submissionID', 'Epitope_ID', 'protein_origin', 
-                       'ID_SOURCE', 'SOURCE_ORGANISM', 'IC50_nM', 'DESCRIPTION_BINDING', 'Year_submission']
 
-train_fasta_path = "/global/scratch/users/sergiomar10/jupyter_notebooks/hla_protein_sequences.fasta"
-all_data = parse_fasta(train_fasta_path)
-for head, hla_seq in all_data:
-    head = head.split('|')[1][:7].replace('*', '').replace(':', '')
-    if head == HLA:
-        HLA_seq = hla_seq
+epitope_data = pd.read_csv(train_fasta, header = None)
+epitope_data.columns = ['sequence', 'ref_ID', 'submissionID', 'Epitope_ID','protein_origin', 'ID_SOURCE', "SOURCE_ORGANISM", "IC50_nM", "DESCRIPTION_BINDING", "Year_submission"]
 
 # Preprocess IC50 values (log10 transformation)
 epitope_data['IC50_nM'] = epitope_data['IC50_nM'].astype(str).replace('\\N', '0').astype(float) + 1
@@ -144,17 +147,22 @@ epitope_data['IC50_nM'] = epitope_data['IC50_nM'].apply(np.log10)
 epitope_data['Year_submission'] = epitope_data['Year_submission'].astype(str).replace('\\N', '0').astype(int)
 epitope_data = epitope_data[["IC50_nM", "sequence", "Year_submission"]].values
 
-# Filter sequences
 filtered_data = []
-for label, sequence, year_submission in epitope_data:
-    if '+' in sequence or '(' in sequence or 'X' in sequence:
-        continue
-    if 'epitope' not in encoding:
-        sequence = HLA_seq + sequence
-    filtered_data.append((label, sequence, year_submission))
 
-print(f"Filtered {len(filtered_data)} sequences.", flush=True)
-aggregated = pd.DataFrame(filtered_data, columns=['label', 'sequence', 'testing'])
+for header, sequence, year_submission in epitope_data:
+    if '+' in sequence:
+        continue
+    if '(' in sequence:
+        continue
+    if 'X' in sequence:
+        continue
+    if 'epitope' not in encoding:   
+        sequence = hla_sequences + sequence
+        
+    filtered_data.append((header, sequence, year_submission))
+
+print(f"Filtered {len(filtered_data)} sequences for training.", flush=True)
+aggregated = pd.DataFrame(filtered_data, columns = ['label','sequence','testing'])
 
 from scipy.stats import gaussian_kde
 
