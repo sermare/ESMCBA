@@ -324,13 +324,18 @@ with torch.no_grad():
             eval_predictions.append(outputs[i].cpu().numpy().item())
             eval_targets.append(targets[i].cpu().numpy().item())
 
-eval_spearman, _ = spearmanr(eval_targets, eval_predictions)
-eval_pearson, _ = pearsonr(eval_targets, eval_predictions)
+
+if len(eval_targets) > 5:
+    eval_spearman, _ = spearmanr(eval_targets, eval_predictions)
+    eval_pearson, _ = pearsonr(eval_targets, eval_predictions)
+else:
+    eval_spearman = 0
+    eval_pearson = 0
 print(f"Final Evaluation (> 2019) Spearman: {eval_spearman:.4f}, Pearson: {eval_pearson:.4f}", flush=True)
 
 # Save results
 eval_df = pd.DataFrame({'sequence': eval_sequences, 'prediction': eval_predictions, 'measured': eval_targets})
-loss_dir = f'/global/scratch/users/sergiomar10/losses/ESMCBA_21032025/'
+loss_dir = f'/global/scratch/users/sergiomar10/losses/ESMCBA_22042025/'
 os.makedirs(loss_dir, exist_ok=True)
 eval_df.to_csv(os.path.join(loss_dir, f'evaluation_{name_of_model}.csv'), index=False)
 print(f"Saved evaluation to {os.path.join(loss_dir, f'evaluation_{name_of_model}.csv')}")

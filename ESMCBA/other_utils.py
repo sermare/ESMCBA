@@ -26,13 +26,23 @@ def get_all_evaluations(path = '/global/scratch/users/sergiomar10/losses/ESMCBA_
         creation_date = datetime.datetime.fromtimestamp(creation_time)
         try:
             df = pd.read_csv(path, sep=',')
+            if len(df) < 5:
+                # print(path)
+                continue
+            if 'measured' not in df.columns:
+                # print(path)
+                continue
         except:
             print(path)
 
         num_evaluations = len(df)
-        # Compute correlation metrics
-        spearman_r, _ = spearmanr(df['measured'], df['prediction'])
-        pearson_r, _ = pearsonr(df['measured'], df['prediction'])
+        
+        if len(df) > 5:
+            spearman_r, _ = spearmanr(df['measured'], df['prediction'])
+            pearson_r, _ = pearsonr(df['measured'], df['prediction'])
+        else:
+            spearman_r = 0
+            pearson_r = 0
         
         # Compute regression metrics
         mse = mean_squared_error(df['measured'], df['prediction'])
