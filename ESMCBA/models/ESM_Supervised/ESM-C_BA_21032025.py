@@ -134,7 +134,10 @@ hla_sequences = [
     if header.replace(':','').replace('*','') == HLA.replace("HLA", "")
 ][0]
 
-max_length_hla = len(hla_sequences)
+if 'HLA' in encoding:
+    max_length_hla = len(hla_sequences)
+else:
+    max_length_hla = 0
 
 print(f"Loaded {len(hla_sequences)} HLA sequences from {fasta_path}", flush=True)
 
@@ -251,7 +254,7 @@ def prepare_dataloaders(dataframe, batch_size=25, size_of_train=1):
 
 # Prepare data
 train_loader, val_loader, eval_loader, train_data, val_data, eval_data = prepare_dataloaders(
-    aggregated, batch_size=25, size_of_train=size_of_train)
+    aggregated, batch_size=10, size_of_train=size_of_train)
 
 # Loss function for regression
 criterion = nn.HuberLoss(delta=1.0)  # delta controls the transition point# nn.MSELoss()  #nn.HuberLoss() #  
@@ -341,7 +344,7 @@ print(f"Final Evaluation (> 2019) Spearman: {eval_spearman:.4f}, Pearson: {eval_
 
 # Save results
 eval_df = pd.DataFrame({'sequence': eval_sequences, 'prediction': eval_predictions, 'measured': eval_targets})
-eval_df = eval_df['sequence'].apply(lambda x: x[max_length_hla:])
+eval_df['sequence'] = eval_df['sequence'].apply(lambda x: x[max_length_hla:])
 loss_dir = f'/global/scratch/users/sergiomar10/losses/ESMCBA_22042025/'
 os.makedirs(loss_dir, exist_ok=True)
 eval_df.to_csv(os.path.join(loss_dir, f'evaluation_{name_of_model}.csv'), index=False)
@@ -360,6 +363,7 @@ if aggregated[aggregated['testing'] > 2019]['sequence'].nunique() < 10:
     if mse_value < 0.5:  
         training_dir = os.path.join(loss_dir, 'training_data')
         os.makedirs(training_dir, exist_ok=True)
+        train_data['sequence'] = train_data['sequence'].apply(lambda x: x[max_length_hla:])
         train_data.to_csv(os.path.join(training_dir, f'{name_of_model}.csv'), index=False)
         
         HLA_folder = HLA.replace("*", "").replace(":", "")

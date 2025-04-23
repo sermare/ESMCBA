@@ -110,7 +110,7 @@ def collate_fn(batch):
 
 unique_peptides = peptides
 
-print(f"Loaded {len(unique_peptides)} unique peptides from MHCflurry data.", flush=True)
+print(f"Loaded {len(unique_peptides)} unique peptides.", flush=True)
 # Prepare DataLoader
 eval_dataset = PeptideDataset(unique_peptides, base_model)
 eval_loader = DataLoader(eval_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
