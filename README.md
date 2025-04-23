@@ -1,57 +1,120 @@
+# 🚀 ESM Cambrian Binding Affinity Analysis
 
+Welcome to **ESM Cambrian Binding Affinity Analysis**! This repo is my playground for blending data science 🧪, molecular biology 🧬, and ML 🤖 to study peptide–MHC binding.
 
-Welcome to the **ESM Cambrian Binding Affinity Analysis** repository! This project combines data science, molecular biology, and machine learning approaches to analyze peptide-MHC binding behavior using **ESM-based** language models. Below you will find an overview of the repository’s goals, structure, and usage instructions.
-
----
-
-## **Table of Contents**
-
-1. [Project Overview](#project-overview)  
-2. [Main Features and Goals](#main-features-and-goals)  
-3. [Repository Structure](#repository-structure)  
-4. [Installation and Requirements](#installation-and-requirements)  
-5. [Usage Guide](#usage-guide)  
-6. [Key Functions and Scripts](#key-functions-and-scripts)  
-7. [License and Citation](#license-and-citation)
+## 📚 Table of Contents
+- [About the Project](#about-the-project)
+- [🚩 Goals & Features](#-goals--features)
+- [📁 Repo Structure](#-repo-structure)
+- [🔧 Installation & Requirements](#-installation--requirements)
+- [💻 How to Use](#-how-to-use)
+- [🛠️ Key Scripts & Modules](#️-key-scripts--modules)
+- [📄 License & Citation](#-license--citation)
+- [✅ TODO](#-todo)
 
 ---
 
-## **Project Overview**
-
-This codebase focuses on evaluating and visualizing binding affinity predictions for peptide-HLA complexes (or protein–peptide interactions) using a **fine-tuned ESM (Evolutionary Scale Modeling) Cambrian** model. The workflow integrates:
-
-- **Data Preprocessing**: Merging predictions from [MHCFlurry](https://github.com/openvax/mhcflurry) and custom ESM-based predictions on various HLAs.  
+## About the Project
+I’m fine-tuning ESM models on IEDB IC₅₀ data and concatenated HLA+epitope sequences to predict binding affinities. I compare against MHCFlurry & NetMHCpan, visualize embeddings with UMAP, and map hotspots for RFdiffusion designs.
 
 ---
-## **Installation and Requirements**
 
-**Clone the Repository**:
+## 🚩 Goals & Features
+- **Data Prep**: clean & merge IEDB + HLA sequences
+- **Model Training**: supervised fine-tuning of ESM on IC₅₀ regression
+- **Benchmarking**: side-by-side with MHCFlurry & NetMHCpan
+- **Visuals**: scatter, violin, PPV, UMAP plots
+- **Hotspot Mapping**: identify interface residues by contact count
+
+---
+
+## 📁 Repo Structure
+```
+.
+├── data/             
+├── jupyter notebooks/        
+├── ESMCBA/          
+│   ├── preprocessing.py    
+│   ├── train_esmc.py     
+│   ├── evaluate.py       
+│   └── hotspot_mapping.py
+│   ├── Models   
+│       ├── Pre-training
+│       ├── Supervised
+├── performances/           
+├── requirements.txt  
+├── README.md         
+└── LICENSE          
+```
+
+---
+
+## 🔧 Installation & Requirements
 ```bash
-git clone https://github.com/<your_username>/ESM-Cambrian-Analysis.git
+git clone https://github.com/<you>/ESM-Cambrian-Analysis.git
 cd ESM-Cambrian-Analysis
 
-### **Install Python Dependencies**  
-*(Inside a conda environment or virtualenv)*:
-```bash
 conda create -n esmcambrian python=3.9 -y
 conda activate esmcambrian
 pip install -r requirements.txt
 
-*(Optional) MHCFlurry Installation*
-If you want to run MHCFlurry predictions side-by-side with ESM results:
-```bash pip install mhcflurry
+# Optional: benchmarking
+pip install mhcflurry
 mhcflurry-downloads fetch
 ```
 
 ---
-## **Other**
 
-Name | What it captures | Threshold (after ≤ 5 Å cutoff) | hotspot = "…", ready to copy
-core_hotspot | Only the strongest binding hot‑spots—absolute core you almost never want to mutate. |  ≥ 4 distinct protein contacts | "A66,A70,A159"
-high_contact | Core + secondary hubs. Good default when you want to preserve the bulk of the binding energy. |  ≥ 3 contacts | "A66,A70,A73,A77,A97,A147,A159"
-medium_contact | Moderately important residues; nice to keep fixed if you want a very native‑like interface. |  = 2 contacts | "A7,A63,A99,A116,A143,A146,A155,A156"
-low_contact | Peripheral/edge residues; usually safe to let RFdiffusion mutate for better packing/solubility. |  = 1 contact | "A5,A9,A33,A45,A59,A67,A69,A76,A80,A81,A84,A95,A114,A123,A124,A142,A152,A160,A163,A167,A171"
-combo_high_low | Lock the high‑energy core while leaving medium residues flexible (high + low combined). | see above | "A5,A9,A33,A45,A59,A66,A67,A69,A70,A73,A76,A77,A80,A81,A84,A95,A97,A114,A123,A124,A142,A147,A152,A159"
-all_contacts | Every chain‑A residue that has ≥ 1 heavy‑atom within 5 Å of chain C (36 total). Use to freeze the entire native interface. |  ≥ 1 contact | "A5,A7,A9,A33,A45,A59,A63,A66,A67,A69,A70,A73,A76,A77,A80,A81,A84,A95,A97,A99,A114,A116,A123,A124,A142,A143,A146,A147,A152,A155,A156,A159,A160,A163,A167,A171"
-user_hotspot | Your original 9‑residue list. | (user‑defined) | "A7,A9,A59,A63,A66,A70,A99,A159,A167"
+## 💻 How to Use
+1. **Preprocess data**  
+   ```bash
+   python scripts/preprocessing.py \
+     --input data/raw/IEDB.csv \
+     --hla-sequences data/raw/HLA_sequences.fasta \
+     --output data/processed/
+   ```
+2. **Train model**  
+   ```bash
+   python scripts/train_esmc.py \
+     --config config/train.yaml \
+     --output-dir models/
+   ```
+3. **Evaluate**  
+   ```bash
+   python scripts/evaluate.py \
+     --predictions results/predictions.csv \
+     --measured data/processed/IC50.csv \
+     --out-dir results/figures/
+   ```
+4. **Explore embeddings**  
+   ```bash
+   jupyter notebook notebooks/umap_visualization.ipynb
+   ```
 
+---
+
+## 🛠️ Key Scripts & Modules
+| Script                 | What it does                                       |
+|------------------------|----------------------------------------------------|
+| preprocessing.py       | merges & formats IEDB + HLA seqs                   |
+| train_esmc.py          | fine-tunes ESM on IC₅₀ regression                  |
+| evaluate.py            | computes Spearman/Pearson, PPV & plots             |
+| hotspot_mapping.py     | maps contact-based hotspots for RFdiffusion        |
+| visualization.py       | reusable plotting funcs (scatter, violin, UMAP)    |
+
+---
+
+## 📄 License & Citation
+MIT License.  
+If you use this work, please cite:  
+> Mares *et al.*, “ESM-Cambrian Binding Affinity Analysis”, 2025.
+
+---
+
+## ✅ TODO
+- [Running] Generate the HLA and epitope models for each of the alleles
+- [ ] Upload the models to hugging face
+- [ ] Generate notebooks for each of the benchmarks to do
+- [ ] Generate more streamlined for other structures for RFdiffusion
+- [ ] Perhaps finetuned the model on allele wide epitopes, and then allele specific ones
+- [ ] Investigate if the RFdiffusion forces a Methionine on the beginning of the sequence

@@ -166,7 +166,6 @@ hla_sequences = [
     if header.replace(':','').replace('*','') == HLA.replace("HLA", "")
 ][0]
 
-
 print(f"Loaded {len(hla_sequences)} HLA sequences from {fasta_path}", flush=True)
 
 IEDB_full = pd.read_csv('/global/scratch/users/sergiomar10/ESMCBA/IEDB_subseted_HLA_w_BA_full_for_training.csv',

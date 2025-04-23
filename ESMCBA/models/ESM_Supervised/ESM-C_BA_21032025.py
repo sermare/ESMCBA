@@ -134,6 +134,8 @@ hla_sequences = [
     if header.replace(':','').replace('*','') == HLA.replace("HLA", "")
 ][0]
 
+max_length_hla = len(hla_sequences)
+
 print(f"Loaded {len(hla_sequences)} HLA sequences from {fasta_path}", flush=True)
 
 train_fasta = f"/global/scratch/users/sergiomar10/data/IEDB_SQL/IEDB_HLA{HLA}_final.csv"
@@ -158,8 +160,12 @@ for header, sequence, year_submission in epitope_data:
         continue
     if 'epitope' not in encoding:   
         sequence = hla_sequences + sequence
+    else:
+        sequence = sequence
         
     filtered_data.append((header, sequence, year_submission))
+
+max_length = np.max([len(x) for x in filtered_data])
 
 print(f"Filtered {len(filtered_data)} sequences for training.", flush=True)
 aggregated = pd.DataFrame(filtered_data, columns = ['label','sequence','testing'])
@@ -335,6 +341,7 @@ print(f"Final Evaluation (> 2019) Spearman: {eval_spearman:.4f}, Pearson: {eval_
 
 # Save results
 eval_df = pd.DataFrame({'sequence': eval_sequences, 'prediction': eval_predictions, 'measured': eval_targets})
+eval_df = eval_df['sequence'].apply(lambda x: x[max_length_hla:])
 loss_dir = f'/global/scratch/users/sergiomar10/losses/ESMCBA_22042025/'
 os.makedirs(loss_dir, exist_ok=True)
 eval_df.to_csv(os.path.join(loss_dir, f'evaluation_{name_of_model}.csv'), index=False)
