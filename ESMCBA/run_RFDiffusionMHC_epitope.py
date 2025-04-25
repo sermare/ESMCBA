@@ -11,15 +11,23 @@ import argparse
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Run RFdiffusion with visualization")
 parser.add_argument("--name", required=True, help="Output directory name (e.g., EPITOPE_1_16042025)")
+parser.add_argument("--pdb", type=str, required=True, help="Input Structure")
 parser.add_argument("--contigs", type=str, required=True, help="Contig string (e.g., 9)")
+parser.add_argument("--hotspots", required=True, help="Hotspot list")
+parser.add_argument("--chains", required=True, help="Chains list")
+parser.add_argument("--epitope_chain", required=True, help="Chains of Epitope")
 parser.add_argument("--iterations", type=int, required=True, choices=[25, 50, 100, 150, 200], help="Number of RFdiffusion iterations")
 parser.add_argument("--num_seqs", type=int, required=True, help="Number of sequences for AlphaFold")
+
 args = parser.parse_args()
+
+pdb = args.pdb
 
 RFDIFFUSION_DIR = "/clusterfs/nilah/sergio/RFdifussion/sokrypton/RFdiffusion"
 MODEL_DIR = os.path.join(RFDIFFUSION_DIR, "models")
 SCHEDULES_DIR = os.path.join(RFDIFFUSION_DIR, "schedules")
-OUTPUT_DIR = os.path.join("/clusterfs/nilah/sergio/RFdifussion", "outputs")
+OUTPUT_DIR = os.path.join(f"/clusterfs/nilah/sergio/RFdifussion/", "outputs")
+OUTPUT_DIR = os.path.join(OUTPUT_DIR, pdb)
 BASE_DIR = "/clusterfs/nilah/sergio/RFdifussion"
 
 # Create output directory
@@ -407,28 +415,49 @@ def visualize_epitope_mhc(pdb_path, output_png, epitope_chain="D"):
 # Set parameters from arguments
 name = args.name
 contigs = args.contigs
-contigs = "A1-274/0 B1-100/0 " + contigs
+# contigs = "A1-274/0 B1-100/0 " + contigs
 iterations = args.iterations
 num_seqs = args.num_seqs
 
+hotspot = args.hotspots
+chains = args.chains
+rm_aa = args.epitope_chain
+
 # Fixed parameters
-pdb = "/clusterfs/nilah/sergio/RFdifussion/RFdiffusion/structures/7RTD.pdb"
-hotspot = "A5,A9,A33,A45,A59,A66,A67,A69,A70,A73,A76,A77,A80,A81,A84,A95,A97,A114,A123,A124,A142,A147,A152,A159" #ONLY HIGH CONTACT
+pdb = f"/clusterfs/nilah/sergio/RFdifussion/structures/pdb_files/{pdb.lower()}.pdb"
+# hotspot = "A4" # "A5,A9,A33,A45,A59,A66,A67,A69,A70,A73,A76,A77,A80,A81,A84,A95,A97,A114,A123,A124,A142,A147,A152,A159" #ONLY HIGH CONTACT
 
 num_designs = 1
 # contigs = "A1-274/0 B1-100/0 C1-9"
 visual = "none"
 symmetry = "none"
 order = 1
-chains = "A,B,C"
+# chains = "A,B,C"
 add_potential = False
+
+#Print Parameters for RFdiffusion
+print("Parameters for RFdiffusion:")   
+print(f"Name: {name}")
+print(f"PDB: {pdb}")
+print(f"Contigs: {contigs}")
+print(f"Iterations: {iterations}")
+print(f"Symmetry: {symmetry}")
+print(f"Hotspot: {hotspot}")
+print(f"Chains: {chains}")
+print(f"Order: {order}")
+print(f"Add Potential: {add_potential}")
+print(f"Num Designs: {num_designs}")
+print(f"Visual: {visual}")
+print(f"Num Seqs: {num_seqs}")
+print(f"Epitope Chain: {rm_aa}")
+print(f"PDB DIRECTORY: {pdb}")
 
 ## Parameters for AF
 initial_guess = False
-num_recycles = 3
+num_recycles = 6
 use_multimer = True
 rm_aa = "C"
-mpnn_sampling_temp = 0.1
+mpnn_sampling_temp = 0.5
 
 # determine where to save
 path = name
