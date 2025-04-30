@@ -17,7 +17,9 @@ from umap import UMAP  # umap‑learn >=0.5
 
 parser = argparse.ArgumentParser(description="Evaluate ESM‑Cambrian model, save embeddings, and compute UMAP reduction.")
 parser.add_argument('--model_path', type=str, required=True, help='Path to pre‑trained model .pth file')
-parser.add_argument('--hla', type=str, default='HLA-A0201', help='HLA type (e.g., HLA-A0201)')
+parser.add_argument('--name', type=str, default='hla-A0201', help='Name of output file')
+parser.add_argument('--hla', type=str, default='hla-A0201', help='hla type (e.g., hla-A0201)')
+parser.add_argument('--encoding', type=str, default='epitope', help='Encoding of the model (epitope or hla)')
 parser.add_argument('--output_dir', type=str, default='/global/scratch/users/sergiomar10/ESMCBA/evaluations', help='Where to save results')
 parser.add_argument('--batch_size', type=int, default=10, help='Batch size')
 parser.add_argument('--peptides', nargs='+', default=['MASK'], help='Peptides to evaluate')
@@ -81,9 +83,42 @@ base_model = model.base_model  # quick reference
 ###############################################################################
 #                         ─── DATA HANDLING ───                               #
 ###############################################################################
+
+# FASTA parser
+def parse_fasta(file_path):
+    """Parse sequences from a FASTA file."""
+    sequences = []
+    with open(file_path, 'r') as f:
+        header, seq = None, ""
+        for line in f:
+            line = line.strip()
+            if line.startswith(">"):
+                if seq:
+                    sequences.append((header, seq))
+                    seq = ""
+                header = line[1:]
+            else:
+                seq += line
+        if seq:
+            sequences.append((header, seq))
+    return sequences
+
+# Load hla sequences
+fasta_path = "/global/scratch/users/sergiomar10/ESMCBA/ESMCBA/jupyter_notebooks/other/hla_sequences.fasta"
+hla_data = parse_fasta(fasta_path)
+
+hla_sequence = [
+    seq for header, seq in hla_data
+    if header.replace(':', '').replace('*', '') == args.hla.replace("hla", "")
+][0]
+
+# Updated Dataset
 class PeptideDataset(Dataset):
-    def __init__(self, sequences):
-        self.sequences = sequences
+    def __init__(self, sequences, hla_sequence=None, encoding=None):
+        if encoding == 'hla' and hla_sequence is not None:
+            self.sequences = [hla_sequence + seq for seq in sequences]
+        else:
+            self.sequences = sequences
 
     def __len__(self):
         return len(self.sequences)
@@ -91,13 +126,20 @@ class PeptideDataset(Dataset):
     def __getitem__(self, idx):
         return self.sequences[idx]
 
+# Collate function
 def collate_fn(batch):
-    """Tokenise and pad inside DataLoader."""
+    """Tokenize and pad inside DataLoader."""
     enc = base_model.tokenizer(batch, return_tensors='pt', padding=True)
     return batch, enc
 
+# Prepare dataset
 peptides = args.peptides
-loader = DataLoader(PeptideDataset(peptides), batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn)
+loader = DataLoader(
+    PeptideDataset(peptides, hla_sequence=hla_sequence, encoding=args.encoding),
+    batch_size=args.batch_size,
+    shuffle=False,
+    collate_fn=collate_fn
+)
 
 ###############################################################################
 #                         ─── EVALUATION LOOP ───                             #
@@ -117,18 +159,27 @@ with torch.no_grad():
 all_preds = torch.cat(all_preds).numpy()
 all_embeds = torch.cat(all_embeds).numpy()  # shape (N,960)
 
+
 ###############################################################################
 #                        ─── SAVE RAW EMBEDDINGS ───                          #
 ###############################################################################
 os.makedirs(args.output_dir, exist_ok=True)
-emb_path = os.path.join(args.output_dir, f"{args.hla}_embeddings.npy")
+emb_path = os.path.join(args.output_dir, f"{args.name}_embeddings.npy")
 np.save(emb_path, all_embeds)
 print(f"Saved raw embeddings → {emb_path}")
 
 ###############################################################################
 #                      ─── UMAP DIMENSIONALITY REDUCTION ───                  #
 ###############################################################################
-reducer = UMAP(n_components=args.umap_dims, n_neighbors=args.umap_neighbors, metric='cosine', random_state=42)
+
+if args.umap_neighbors > len(peptides):
+    umap_neighbors = len(peptides)
+else:
+    umap_neighbors = args.umap_neighbors
+    
+
+
+reducer = UMAP(n_components=args.umap_dims, n_neighbors=umap_neighbors) #, metric='cosine', random_state=42)
 umap_coords = reducer.fit_transform(all_embeds)  # shape (N,umap_dims)
 
 umap_cols = [f"UMAP_{i+1}" for i in range(args.umap_dims)]
@@ -138,7 +189,7 @@ result_df = pd.DataFrame({
     **{c: umap_coords[:, i] for i, c in enumerate(umap_cols)}
 })
 
-csv_path = os.path.join(args.output_dir, f"{args.hla}_umap.csv")
+csv_path = os.path.join(args.output_dir, f"{args.name}_umap.csv")
 result_df.to_csv(csv_path, index=False)
 print(f"Saved UMAP results → {csv_path}")
 

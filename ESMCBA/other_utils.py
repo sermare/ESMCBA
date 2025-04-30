@@ -26,7 +26,7 @@ def get_all_evaluations(path = '/global/scratch/users/sergiomar10/losses/ESMCBA_
         creation_date = datetime.datetime.fromtimestamp(creation_time)
         try:
             df = pd.read_csv(path, sep=',')
-            if len(df) < 5:
+            if len(df) < 2:
                 # print(path)
                 continue
             if 'measured' not in df.columns:
