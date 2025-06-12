@@ -85,6 +85,75 @@ def get_all_evaluations(path = '/global/scratch/users/sergiomar10/losses/ESMCBA_
 
     return evaluations_df
 
+def get_all_evaluations_pretrain(path = '/global/scratch/users/sergiomar10/losses/ESMCBA_02032025/*.csv'):
+   
+    evaluations_df = []
+
+    for path in glob.glob(path):
+
+        creation_time = os.path.getctime(path)
+        creation_date = datetime.datetime.fromtimestamp(creation_time)
+        try:
+            df = pd.read_csv(path, sep=',')
+            if len(df) < 2:
+                # print(path)
+                continue
+            if 'measured' not in df.columns:
+                # print(path)
+                continue
+        except:
+            print(path)
+
+        num_evaluations = len(df)
+        
+        if len(df) > 5:
+            spearman_r, _ = spearmanr(df['measured'], df['prediction'])
+            pearson_r, _ = pearsonr(df['measured'], df['prediction'])
+        else:
+            spearman_r = 0
+            pearson_r = 0
+        
+        # Compute regression metrics
+        mse = mean_squared_error(df['measured'], df['prediction'])
+        mae = mean_absolute_error(df['measured'], df['prediction'])
+        r2 = r2_score(df['measured'], df['prediction'])
+        rmse = np.sqrt(mse)
+
+        if '_MSE_' in path:
+            loss = 'MSE'
+        else:
+            loss = 'Hubber' 
+        
+        name = path.split('_')
+
+        HLA = name[14]
+    
+        evaluations_df.append([
+            HLA,
+            loss,
+            name[3],
+            name[4],
+            name[5],
+            name[16],
+            name[17],
+            num_evaluations,
+            spearman_r,
+            pearson_r,
+            mse,
+            mae,
+            r2,
+            rmse,
+            creation_date,
+            path
+        ])
+
+
+    columns_to_name = ['HLA','Losses','encoding','data_prop','trained_blocks','lr_transformer','lr_regression','n_evaluations','spearman','pearsonr','mse','mae','r2','rmse','time','path']
+
+    evaluations_df = pd.DataFrame(evaluations_df, columns=columns_to_name)
+
+    return evaluations_df
+
 def mhcflurry_predict(evaluations_dt_sorted):
 
     hla_sequences = []

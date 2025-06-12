@@ -466,6 +466,9 @@ while os.path.exists(f"outputs/{name}_0.pdb"):
 
 OUTPUT_DIR = os.path.join(OUTPUT_DIR, path)
 
+## Added this 20th May 2025 for controls of no hotspots
+hotspot = "A1"
+
 flags = {"contigs":contigs,
          "pdb":pdb,
          "order":order,

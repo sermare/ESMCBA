@@ -345,7 +345,7 @@ print(f"Final Evaluation (> 2019) Spearman: {eval_spearman:.4f}, Pearson: {eval_
 # Save results
 eval_df = pd.DataFrame({'sequence': eval_sequences, 'prediction': eval_predictions, 'measured': eval_targets})
 eval_df['sequence'] = eval_df['sequence'].apply(lambda x: x[max_length_hla:])
-loss_dir = f'/global/scratch/users/sergiomar10/losses/ESMCBA_22042025/'
+loss_dir = f'/global/scratch/users/sergiomar10/losses/ESMCBA_28062025/'
 os.makedirs(loss_dir, exist_ok=True)
 eval_df.to_csv(os.path.join(loss_dir, f'evaluation_{name_of_model}.csv'), index=False)
 print(f"Saved evaluation to {os.path.join(loss_dir, f'evaluation_{name_of_model}.csv')}")
