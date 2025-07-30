@@ -425,7 +425,11 @@ rm_aa = args.epitope_chain
 
 # Fixed parameters
 pdb = f"/clusterfs/nilah/sergio/RFdifussion/structures/pdb_files/{pdb.lower()}.pdb"
-# hotspot = "A4" # "A5,A9,A33,A45,A59,A66,A67,A69,A70,A73,A76,A77,A80,A81,A84,A95,A97,A114,A123,A124,A142,A147,A152,A159" #ONLY HIGH CONTACT
+
+hotspot = "A5,A9,A33,A45,A59,A66,A67,A69,A70,A73,A76,A77,A80,A81,A84,A95,A97,A114,A123,A124,A142,A147,A152,A159" #ONLY HIGH CONTACT
+
+## Added this 20th May 2025 for controls of no hotspots
+hotspot = "A1"
 
 num_designs = 1
 # contigs = "A1-274/0 B1-100/0 C1-9"
@@ -465,9 +469,6 @@ while os.path.exists(f"outputs/{name}_0.pdb"):
   path = name + "_" + ''.join(random.choices(string.ascii_lowercase + string.digits, k=5))
 
 OUTPUT_DIR = os.path.join(OUTPUT_DIR, path)
-
-## Added this 20th May 2025 for controls of no hotspots
-hotspot = "A1"
 
 flags = {"contigs":contigs,
          "pdb":pdb,
