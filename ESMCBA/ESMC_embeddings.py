@@ -19,7 +19,7 @@ DEVICE     = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 8
 MAX_LEN    = 400
 PCA_DIMS   = None    # set to None to skip PCA
-UMAP_K     = [50, 100, 200, 300]
+UMAP_K     = [400, 500, 700, 1000]
 UMAP_DIST  = 0.1
 
 # Base TSNE args
@@ -132,25 +132,25 @@ def run_embedding_and_dr(df):
     #     Xn = PCA(n_components=PCA_DIMS, random_state=42).fit_transform(Xn)
     #     print(f"PCA → {PCA_DIMS}")
 
-    # # TSNE sweep
-    print("Running TSNE sweep…")
-    for params in TSNE_SWEEP:
-        kw = {**TSNE_BASE_KW, **params}
-        tsne = TSNE(**kw)
-        coords = tsne.fit_transform(Xn)
+    # # # TSNE sweep
+    # print("Running TSNE sweep…")
+    # for params in TSNE_SWEEP:
+    #     kw = {**TSNE_BASE_KW, **params}
+    #     tsne = TSNE(**kw)
+    #     coords = tsne.fit_transform(Xn)
 
-        fname = (f"tsne_perp{params['perplexity']}"
-                 f"_lr{params['learning_rate']}"
-                 f"_ee{int(params['early_exaggeration'])}.csv")
+    #     fname = (f"tsne_perp{params['perplexity']}"
+    #              f"_lr{params['learning_rate']}"
+    #              f"_ee{int(params['early_exaggeration'])}.csv")
 
-        pd.DataFrame(coords, index=seqs, columns=['TSNE1','TSNE2']) \
-          .to_csv(fname)
+    #     pd.DataFrame(coords, index=seqs, columns=['TSNE1','TSNE2']) \
+    #       .to_csv(fname)
 
-        print(f"→ wrote {fname}")
+    #     print(f"→ wrote {fname}")
 
     # (Optional) UMAP block left commented
     for k in UMAP_K:
-        for md in [0.2, 0.5, 1]:
+        for md in [1]:
             umap = UMAP(n_components=2, n_neighbors=k, min_dist=md,
                         random_state=7)
             coords = umap.fit_transform(Xn)
