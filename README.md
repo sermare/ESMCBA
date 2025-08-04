@@ -1,120 +1,85 @@
-# 🚀 ESM Cambrian Binding Affinity Analysis
+# ESM-Cambrian Binding Affinity Analysis (ESMCBA)
 
-Welcome to **ESM Cambrian Binding Affinity Analysis**! This repo is my playground for blending data science 🧪, molecular biology 🧬, and ML 🤖 to study peptide–MHC binding.
-
-## 📚 Table of Contents
-- [About the Project](#about-the-project)
-- [🚩 Goals & Features](#-goals--features)
-- [📁 Repo Structure](#-repo-structure)
-- [🔧 Installation & Requirements](#-installation--requirements)
-- [💻 How to Use](#-how-to-use)
-- [🛠️ Key Scripts & Modules](#️-key-scripts--modules)
-- [📄 License & Citation](#-license--citation)
-- [✅ TODO](#-todo)
+This repository bundles code, data, notebooks, and trained models for exploring peptide–MHC (pMHC) binding with **ESM Cambrian** protein language models and for evaluating structure‑guided designs produced with **RFdiffusion**.
 
 ---
 
-## About the Project
-I’m fine-tuning ESM models on IEDB IC₅₀ data and concatenated HLA+epitope sequences to predict binding affinities. I compare against MHCFlurry & NetMHCpan, visualize embeddings with UMAP, and map hotspots for RFdiffusion designs.
+## Quick facts
+
+| Item | Details |
+|------|---------|
+| Main package | `ESMCBA/` (Python 3.10 modules and utilities) |
+| Core tasks | • Generate ESM embeddings<br>• Fine‑tune / evaluate binding‑affinity (BA) regressors and classifiers<br>• Compare to external predictors (MHCFlurry, HLAthena, MixMHCpred, MHCnuggets)<br>• Visualise embeddings (UMAP)<br>• Analyse RFdiffusion pMHC designs & contact maps |
+| Key data sources | IEDB IC₅₀ tables, HLA sequences, Apollo test sets, RFdiffusion outputs |
+| Figures | Publication‑ready PDFs under `figures/` and `figures_manuscript/` |
+| Environment | Conda env **ESM_cambrian** (Python 3.10, PyTorch 2.6, transformers 4.46, esm 3.1.3) |
 
 ---
 
-## 🚩 Goals & Features
-- **Data Prep**: clean & merge IEDB + HLA sequences
-- **Model Training**: supervised fine-tuning of ESM on IC₅₀ regression
-- **Benchmarking**: side-by-side with MHCFlurry & NetMHCpan
-- **Visuals**: scatter, violin, PPV, UMAP plots
-- **Hotspot Mapping**: identify interface residues by contact count
-
----
-
-## 📁 Repo Structure
+## Directory outline
 ```
-.
-├── data/             
-├── jupyter notebooks/        
-├── ESMCBA/          
-│   ├── preprocessing.py    
-│   ├── train_esmc.py     
-│   ├── evaluate.py       
-│   └── hotspot_mapping.py
-│   ├── Models   
-│       ├── Pre-training
-│       ├── Supervised
-├── performances/           
-├── requirements.txt  
-├── README.md         
-└── LICENSE          
+ESMCBA/                   # importable package: modelling & utilities
+│
+├─ models/
+│   ├─ ESM_Supervised/    # model definitions + checkpoints
+│   └─ ESM_Unsupervised/
+│
+data/                     # CSV/TSV inputs and intermediate results
+│   ├─ Amino_Acid_Properties.csv
+│   ├─ IEDB_full_subset_filtered_out_MHCFlurry.csv
+│   └─ ... (predictions_*.tsv, evaluation_*.csv, etc.)
+│
+figures/                  # exploratory plots (logos, ROC curves, etc.)
+figures_manuscript/       # final manuscript figures
+performances/             # aggregated model‑metric CSVs
+jupyter_notebooks/        # reproducible analysis notebooks
+└─ (GIFs, RFdiffusion outputs, misc.)
 ```
 
 ---
 
-## 🔧 Installation & Requirements
+## Installation
+
 ```bash
-git clone https://github.com/<you>/ESM-Cambrian-Analysis.git
-cd ESM-Cambrian-Analysis
+git clone <repo>
+cd <repo>
 
-conda create -n esmcambrian python=3.9 -y
-conda activate esmcambrian
-pip install -r requirements.txt
+# reproduce environment (shown in `conda list`)
+conda create -n ESM_cambrian python=3.10 -y
+conda activate ESM_cambrian
 
-# Optional: benchmarking
-pip install mhcflurry
-mhcflurry-downloads fetch
+pip install torch==2.6.0 transformers==4.46.3 esm==3.1.3 \
+            biopython==1.85 umap-learn==0.5.7 scikit-learn==1.6.1 \
+            seaborn==0.13.2 pandas==2.2.3 matplotlib==3.10.1
 ```
 
----
-
-## 💻 How to Use
-1. **Preprocess data**  
-   ```bash
-   python scripts/preprocessing.py \
-     --input data/raw/IEDB.csv \
-     --hla-sequences data/raw/HLA_sequences.fasta \
-     --output data/processed/
-   ```
-2. **Train model**  
-   ```bash
-   python scripts/train_esmc.py \
-     --config config/train.yaml \
-     --output-dir models/
-   ```
-3. **Evaluate**  
-   ```bash
-   python scripts/evaluate.py \
-     --predictions results/predictions.csv \
-     --measured data/processed/IC50.csv \
-     --out-dir results/figures/
-   ```
-4. **Explore embeddings**  
-   ```bash
-   jupyter notebook notebooks/umap_visualization.ipynb
-   ```
+*(Install predictors like `mhcflurry` separately if you intend to rerun benchmarking notebooks.)*
 
 ---
 
-## 🛠️ Key Scripts & Modules
-| Script                 | What it does                                       |
-|------------------------|----------------------------------------------------|
-| preprocessing.py       | merges & formats IEDB + HLA seqs                   |
-| train_esmc.py          | fine-tunes ESM on IC₅₀ regression                  |
-| evaluate.py            | computes Spearman/Pearson, PPV & plots             |
-| hotspot_mapping.py     | maps contact-based hotspots for RFdiffusion        |
-| visualization.py       | reusable plotting funcs (scatter, violin, UMAP)    |
+## Typical workflow
+
+| Step | Script / notebook | Output |
+|------|-------------------|--------|
+| 1 | `embeddings_generation.py` | Embedding files in `data/` |
+| 2 | `make_ESMCBA_models.py` (supervised) or `forward_pass_unsupervised.py` | Checkpoints in `models/` |
+| 3 | `evaluation_IEDB_qual.py` | Metric CSVs + ROC/AUC PDFs |
+| 4 | `HLA_full_sequences_UMAP.py` | UMAP plots in `figures/` |
+| 5 | Notebooks under `jupyter_notebooks/rdfiffusion/` | Contact maps, hit‑rate tables |
+
+Run any script with `-h` to see its arguments.
 
 ---
 
-## 📄 License & Citation
-MIT License.  
-If you use this work, please cite:  
-> Mares *et al.*, “ESM-Cambrian Binding Affinity Analysis”, 2025.
+## Citing
+
+> S. Mares (2025). Continued domain-specific pre-training of protein language models for pMHC-I binding prediction.  
+> [DOI / preprint.](https://arxiv.org/abs/2507.13077v1)
 
 ---
 
-## ✅ TODO
-- [Running] Generate the HLA and epitope models for each of the alleles
-- [ ] Upload the models to hugging face
-- [ ] Generate notebooks for each of the benchmarks to do
-- [ ] Generate more streamlined for other structures for RFdiffusion
-- [ ] Perhaps finetuned the model on allele wide epitopes, and then allele specific ones
-- [ ] Investigate if the RFdiffusion forces a Methionine on the beginning of the sequence
+## Maintenance checklist
+
+* Remove `__pycache__/` and large binaries from Git; ignore via `.gitignore` or track via Git‑LFS.  
+* Consolidate duplicate CSVs in `performances/`.  
+* Standardise file names with stray colon or non‑ASCII characters (e.g. `input_B_15:01_output.csv`).  
