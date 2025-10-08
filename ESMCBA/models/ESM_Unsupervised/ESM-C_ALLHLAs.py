@@ -312,7 +312,6 @@ os.makedirs(save_dir, exist_ok=True)
 log_file = os.path.join(save_dir, f"training_log_{name_of_model}.csv")
 
 
-
 def evaluate_mlm_accuracy(loader):
     """Compute how often the model guesses the correct token for the masked tokens."""
     model_masked.eval()
