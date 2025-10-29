@@ -136,9 +136,9 @@ Run any script with `-h` to see its arguments.
 
 ---
 
-## Running embeddings.py
+## To Run Predictions (run embeddings.py)
 
-The `embeddings_generation.py` script generates ESM embeddings for peptide sequences.
+The `embeddings_generation.py` script generates ESM predictions and the embeddings for peptide sequences.
 
 ### Example 1: Using a downloaded checkpoint
 
