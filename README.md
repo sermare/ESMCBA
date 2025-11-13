@@ -45,7 +45,8 @@ jupyter_notebooks/        # reproducible analysis notebooks
 ## Quick Start
 
 You can access this notebook to run with google collab:
-https://colab.research.google.com/drive/1R_9aUDhxm9YDdno_Ykg8KJECd3ygQbHl?usp=sharing
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1R_9aUDhxm9YDdno_Ykg8KJECd3ygQbHl?usp=sharing)
+
 
 
 ## Installation
