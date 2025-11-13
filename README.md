@@ -42,6 +42,11 @@ jupyter_notebooks/        # reproducible analysis notebooks
 ```
 
 ---
+## Quick Start
+
+You can access this notebook to run with google collab:
+https://colab.research.google.com/drive/1R_9aUDhxm9YDdno_Ykg8KJECd3ygQbHl?usp=sharing
+
 
 ## Installation
 
@@ -63,16 +68,19 @@ conda activate ESM_cambrian
 ### Step 3: Install required packages
 
 ```bash
-# Core dependencies
-pip install torch==2.6.0 transformers==4.46.3 esm==3.1.3 \
-            biopython==1.85 umap-learn==0.5.7 scikit-learn==1.6.1 \
-            seaborn==0.13.2 pandas==2.2.3 matplotlib==3.10.1
+# Install core PyTorch and Transformers ecosystem
+pip install torch
+pip install transformers
+pip install esm
 
-# For downloading model checkpoints from Hugging Face
-pip install -U huggingface_hub
+# Install Hugging Face Hub utilities
+pip install "huggingface-hub<1.0"
 
-# Optional: speed up large file downloads
-pip install -U hf_transfer
+# Optional: Install hf_transfer for faster large file downloads
+pip install hf_transfer
+
+pip install biopython umap-learn scikit-learn seaborn pandas matplotlib
+
 ```
 
 **Note**: The `esm` and `umap-learn` packages are essential for running the embeddings generation and visualization scripts.
@@ -104,12 +112,12 @@ hf download smares/ESMCBA --repo-type model --local-dir ./models
 
 **Option B: Download a specific checkpoint**
 
-```bash
-# Download a single file to ./models
-hf download smares/ESMCBA \
-  "ESMCBA_epitope_0.5_20_ESMMASK_epitope_FT_15_0.0001_1e-05_AUG_6_HLAB5101_5_0.001_1e-06__3_B5101_Hubber_B5101_final.pth" \
-  --repo-type model --local-dir ./models
-```
+#or just get one model
+huggingface-cli download smares/ESMCBA \
+  "ESMCBA_epitope_0.8_30_ESMMASK_epitope_FT_5_0.001_1e-06_AUG_6_HLAA0201_2_0.001_1e-06__2_A0201_Hubber_A0201_final.pth" \
+  --repo-type model \
+  --local-dir ./models
+
 
 **Option C: Use Hugging Face cache (automatic)**
 
@@ -143,6 +151,8 @@ The `embeddings_generation.py` script generates ESM predictions and the embeddin
 ### Example 1: Using a downloaded checkpoint
 
 ```bash
+cd ESMCBA/ESMCBA
+
 python3 embeddings_generation.py \
   --model_path ./models/ESMCBA_epitope_0.5_20_ESMMASK_epitope_FT_15_0.0001_1e-05_AUG_6_HLAB5101_5_0.001_1e-06__3_B5101_Hubber_B5101_final.pth \
   --name B5101-ESMCBA \
