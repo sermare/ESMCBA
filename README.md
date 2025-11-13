@@ -5,6 +5,9 @@ This repository bundles code, data, notebooks, and trained models for exploring 
 **Code**: https://github.com/sermare/ESMCBA  
 **Models**: https://huggingface.co/smares/ESMCBA
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1R_9aUDhxm9YDdno_Ykg8KJECd3ygQbHl?usp=sharing)
+
+
 ---
 
 ## Quick facts
