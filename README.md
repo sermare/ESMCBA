@@ -25,6 +25,65 @@ This repository bundles code, data, notebooks, and trained models for exploring 
 
 ---
 
+---
+
+## 🚀 Quick Start with pip
+
+ESMCBA is now available on PyPI! Install it with a single command:
+```bash
+pip install esmcba
+```
+
+### Basic Usage
+
+Once installed, you can run predictions directly from the command line:
+```bash
+esmcba --hla A0201 \
+  --peptides KIQEGVVDYGA VLMSNLGMPS DTLRVEAFEYY \
+  --encoding epitope \
+  --output_dir ./outputs
+```
+
+### Complete Example
+
+Here's a full example with multiple peptides for HLA-A*02:01:
+```bash
+esmcba --hla A0201 \
+  --peptides KIQEGVVDYGA VLMSNLGMPS DTLRVEAFEYY AKKPTETI FKLNIKLLGVG \
+             ETSNSFDVLK INVIVFDGKSK VDFCGKGYHLM AYPLTKHPNQ RAMPNMLRI \
+             FIASFRLFA YIFFASFYYV SLIDFYLCFL FLTENLLLYI YMPYFFTLL \
+             FLLPSLATV FLAFLLFLV YFIASFRLFA FFFLYENAFL FLIGCNYLG \
+             YLATALLTL FLHFLPRV YLCFLAFLLF YLKLTDNVYI KLMGHFAWWT \
+             TLMNVLTLV YLTNDVSFL FLPFAMGI LLADKFPV SMWSFNPET \
+             LLMPILTLT LVAEWFLAYI FLYLYALVYF LMSFTVL MWLSYFIA \
+             FLNGSCGSV LVLSVNPYV GLCVDIPGI \
+  --encoding epitope \
+  --output_dir ./outputs
+```
+
+### Output Files
+
+After running, you'll find in your output directory:
+- `A0201-ESMCBA_embeddings.npy` - Raw ESM embeddings
+- `A0201-ESMCBA_umap.csv` - UMAP visualization coordinates
+
+### Available Options
+```bash
+esmcba --help
+```
+
+Key parameters:
+- `--hla`: HLA allele (e.g., A0201, B1402, C0501)
+- `--peptides`: Space-separated list of peptide sequences
+- `--encoding`: Encoding type (`epitope` or `hla`, default: `epitope`)
+- `--output_dir`: Directory for output files (default: `./outputs`)
+- `--batch_size`: Batch size for inference (default: 10)
+- `--umap_dims`: UMAP dimensions, 2 or 3 (default: 2)
+
+
+---
+---
+
 ## Directory outline
 
 ```
