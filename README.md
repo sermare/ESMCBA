@@ -1,6 +1,8 @@
 # ESM-Cambrian Binding Affinity (ESMCBA)
 
-This repository bundles code, data, notebooks, and trained models for exploring peptide–MHC (pMHC) binding with **ESM Cambrian** protein language models and for evaluating structure‑guided designs produced with **RFdiffusion**.
+This repository bundles code, data, notebooks, and trained models for exploring peptide–MHC (pMHC) binding with **ESM Cambrian** protein language models.
+
+![Graph](https://github.com/sermare/ESMCBA/blob/main/figures_manuscript/graph_abstract2.png)
 
 **Code**: https://github.com/sermare/ESMCBA  
 **Models**: https://huggingface.co/smares/ESMCBA
@@ -90,6 +92,8 @@ pip install biopython umap-learn scikit-learn seaborn pandas matplotlib
 **Note**: The `esm` and `umap-learn` packages are essential for running the embeddings generation and visualization scripts.
 
 *(Install predictors like `mhcflurry` separately if you intend to rerun benchmarking notebooks.)*
+
+![SOTA](https://github.com/sermare/ESMCBA/blob/main/figures_manuscript/4a_SOTA_models-4.png)
 
 ---
 
